@@ -1,4 +1,4 @@
-from flask import current_app as app, Blueprint, jsonify, render_template, request
+from flask import current_app as app, Blueprint, jsonify, render_template, request, send_from_directory
 from flask_security import auth_required, verify_password, hash_password
 from models import db
 
@@ -6,7 +6,7 @@ datastore = app.security.datastore
 
 @app.route('/')
 def home():
-    return render_template('index.html')
+    return send_from_directory('static', 'index.html')
 
 @app.route('/register', methods=['POST'])
 def register():
