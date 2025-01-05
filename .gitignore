@@ -1,0 +1,8 @@
+# Ignore virtual environment
+venv/
+
+# Ignore node_modules of frontend
+frontend/node_modules/
+
+# Ignore Python cache
+__pycache__/
