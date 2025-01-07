@@ -1,10 +1,32 @@
 from flask import request, current_app as app
 from flask_restful import Api, Resource, fields, marshal_with
 from flask_security import auth_required
-from models import db, Qualification, Subject
+from models import db, Qualification, Subject, User
 from sqlalchemy.exc import IntegrityError
+from flask_security.utils import hash_password
+from flask_security import SQLAlchemyUserDatastore
+from app import userdatastore
 
 api = Api(prefix='/api')
+
+
+user_fields = {
+    "id": fields.Integer,
+    "email": fields.String,
+    "password": fields.String,
+    "fullname": fields.String,
+    "dob": fields.String,
+    "qualification_id": fields.Integer,
+    "profile_url": fields.String,
+    "address": fields.String,
+    "phone": fields.String,
+    "roles": fields.List(fields.String),
+    "subjects": fields.List(fields.String),
+    "quizzes": fields.List(fields.String),
+    "scores": fields.List(fields.String)
+}
+
+
 
 qual_fields = {
     "id": fields.Integer,
@@ -14,11 +36,150 @@ qual_fields = {
     "users": fields.List(fields.String)
 }
 
+subjects_fields = {
+    "id": fields.Integer,
+    "name": fields.String,
+    "description": fields.String,
+    "qualification_id": fields.Integer
+}
+
+class UserResource(Resource):
+    @marshal_with(user_fields)
+    @auth_required('token')
+    def get(self):
+        users = User.query.all()
+        return users
+    
+
+
+# Assuming user_datastore is defined in your app.py
+class UserRegisterResource(Resource):
+    def post(self):
+        data = request.get_json()
+        email = data.get('email')
+        password = data.get('password')
+        fullname = data.get('fullname')
+        dob = data.get('dob')
+        qualification_id = data.get('qualification_id')
+        subjects = data.get('subjects', [])
+        profile_url = data.get('profile_url')
+        address = data.get('address')
+        phone = data.get('phone')
+
+        if not email:
+            return {"message": "Email is required"}, 400
+
+        if not password:
+            return {"message": "Password is required"}, 400
+
+        if not fullname:
+            return {"message": "Fullname is required"}, 400
+
+        if not dob:
+            return {"message": "Date of Birth is required"}, 400
+
+        if not qualification_id:
+            return {"message": "Qualification is required"}, 400
+
+        # Check if the qualification exists
+        qualification = Qualification.query.get(qualification_id)
+        if not qualification:
+            return {"message": "Qualification not found"}, 404
+
+        # Check if the user already exists
+        existing_user = userdatastore.find_user(email=email)
+        if existing_user:
+            return {"message": "User already registered. Please login."}, 400
+
+        # Create the user using Flask-Security
+        try:
+            # Create the user
+            userdatastore.create_user(
+                email=email,
+                password=hash_password(password),
+                fullname=fullname,
+                dob=dob,
+                qualification_id=qualification_id,
+                subjects=subjects,
+                profile_url=profile_url,
+                address=address,
+                phone=phone
+            )
+            
+            # Assign the default role
+            default_role = userdatastore.find_role('user')
+            if not default_role:
+                return {"error": "Default role 'user' not found"}, 500
+            userdatastore.add_role_to_user(email, default_role)
+            
+            # Commit the transaction
+            db.session.commit()
+
+        except IntegrityError as e:
+            db.session.rollback()
+            return {"error": f"Database error: {str(e.orig)}"}, 500
+
+        return {"message": "User created successfully"}, 201
+
+
+
 class QualificationResource(Resource):
     @marshal_with(qual_fields)
     def get(self):
         qualifications = Qualification.query.all()
         return qualifications
+
+
+class SubjectsWithQualificationResource(Resource):
+    @marshal_with(subjects_fields)
+    def get(self, qualification_id):
+        subjects = Subject.query.filter_by(qualification_id=qualification_id).all()
+        return subjects
+
+
+
+class SubjectResource(Resource):
+
+    @marshal_with(subjects_fields)
+    @auth_required('token')
+    def get(self):
+        subjects = Subject.query.all()
+        return subjects
+
+    @auth_required('token')
+    def post(self):
+        data = request.get_json()
+        name = data.get('name')
+        description = data.get('description')
+        qualification_id = data.get('qualification_id')
+
+        if not name:
+            return {"message": "Subject name is required"}, 400
+
+        # Check if the subject already exists
+        existing_subject = Subject.query.filter_by(name=name).first()
+        if existing_subject:
+            return {"message": f"Subject '{name}' already exists"}, 400
+
+        # Check if the qualification exists
+        qualification = Qualification.query.get(qualification_id)
+        if not qualification:
+            return {"message": "Qualification not found"}, 404
+
+        # Create the subject
+        subject = Subject(name=name, description=description, qualification=qualification)
+        db.session.add(subject)
+
+        try:
+            db.session.commit()
+        except IntegrityError:
+            db.session.rollback()
+            return {"error": "An unexpected error occurred"}, 500
+
+        return {"message": "Subject created successfully"}, 201
+
+
+
 
 class QualificationSubjectResource(Resource):
     @auth_required('token')
@@ -70,5 +231,11 @@ class QualificationSubjectResource(Resource):
 
         return {"message": "Qualification and subjects created successfully"}, 201
 
+
+
+api.add_resource(UserResource, '/users/data')
+api.add_resource(UserRegisterResource, '/user/register')
 api.add_resource(QualificationResource, '/qualifications')
+api.add_resource(SubjectsWithQualificationResource, '/qualifications/<int:qualification_id>/subjects')
+api.add_resource(SubjectResource, '/subjects')
 api.add_resource(QualificationSubjectResource, '/create/qualification-subjects')

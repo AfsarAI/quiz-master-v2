@@ -1,6 +1,6 @@
 <template>
   <!-- Footer -->
-  <footer class="bg-dark text-white text-center text-lg-start mt-5">
+  <footer class="bg-dark text-white text-center text-lg-start">
     <div class="container p-4">
       <div class="row">
         <!-- Column 1 -->

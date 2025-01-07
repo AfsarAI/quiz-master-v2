@@ -21,6 +21,11 @@ export default {
 </script>
 
 <style>
+body,
+html {
+  overflow-x: hidden;
+}
+
 /* Add this CSS to style the layout */
 #app {
   display: flex;
