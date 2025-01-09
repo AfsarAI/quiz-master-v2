@@ -1,9 +1,18 @@
 <template>
   <nav
-    class="navbar nav-underline navbar-dark navbar-expand-lg bg-white shadow sticky-top"
+    :class="[
+      'navbar',
+      'navbar-expand-lg',
+      'shadow',
+      'sticky-top',
+      {
+        'navbar-dark bg-dark': isDarkMode,
+        'navbar-light bg-light': !isDarkMode,
+      },
+    ]"
   >
     <div class="container">
-      <router-link to="/" class="navbar-brand fw-bold text-gray">
+      <router-link to="/" class="navbar-brand fw-bold">
         Quiz Master
       </router-link>
       <button
@@ -39,59 +48,79 @@
 </template>
 
 <script>
+import { computed } from "vue";
+import { useStore } from "vuex";
+
 export default {
   name: "AppNavbar",
+  setup() {
+    const store = useStore();
+    const isDarkMode = computed(() => store.state.isDarkMode);
+
+    return {
+      isDarkMode,
+    };
+  },
 };
 </script>
 
 <style scoped>
-/* Adjust the navbar brand color for visibility */
 .navbar-brand {
-  color: #6c757d; /* Neutral gray */
+  color: inherit;
 }
 
 .navbar-brand:hover {
-  color: #5a6268; /* Darker gray */
+  color: #3498db;
 }
 
-/* Style for buttons */
 .btn-outline-primary {
-  color: #007bff;
-  border-color: #007bff;
+  color: #3498db;
+  border-color: #3498db;
 }
 
 .btn-outline-primary:hover {
   color: #fff;
-  background-color: #007bff;
-  border-color: #0056b3;
+  background-color: #3498db;
+  border-color: #3498db;
 }
 
-/* Active state for buttons */
 .navbar-nav .btn-outline-primary.router-link-exact-active,
 .navbar-nav .btn-outline-primary.router-link-active {
   color: #fff;
-  background-color: #007bff;
-  border-color: #0056b3;
+  background-color: #3498db;
+  border-color: #3498db;
 }
 
-/* Default nav-link styling */
 .nav-link {
-  color: #6c757d;
+  color: inherit;
 }
 
 .nav-link:hover {
-  color: #007bff;
+  color: #3498db;
 }
 
-/* Only change text color for active nav-link (no background change) */
 .navbar-nav .nav-link.router-link-exact-active,
 .navbar-nav .nav-link.router-link-active {
-  color: #007bff;
+  color: #3498db;
 }
 
-/* Optional: Ensures that nav-link text doesn't change background color */
-.navbar-nav .nav-link.router-link-exact-active:hover,
-.navbar-nav .nav-link.router-link-active:hover {
-  background-color: transparent;
+.dark-mode .navbar-brand:hover,
+.dark-mode .nav-link:hover,
+.dark-mode .navbar-nav .nav-link.router-link-exact-active,
+.dark-mode .navbar-nav .nav-link.router-link-active {
+  color: #5dade2;
+}
+
+.dark-mode .btn-outline-primary {
+  color: #5dade2;
+  border-color: #5dade2;
+}
+
+.dark-mode .btn-outline-primary:hover,
+.dark-mode .navbar-nav .btn-outline-primary.router-link-exact-active,
+.dark-mode .navbar-nav .btn-outline-primary.router-link-active {
+  color: #fff;
+  background-color: #5dade2;
+  border-color: #5dade2;
 }
 </style>

@@ -5,10 +5,11 @@ from models import db, Qualification, Subject, User
 from sqlalchemy.exc import IntegrityError
 from flask_security.utils import hash_password
 from flask_security import SQLAlchemyUserDatastore
-from app import userdatastore
+
 
 api = Api(prefix='/api')
 
+userdatastore: SQLAlchemyUserDatastore = app.security.datastore
 
 user_fields = {
     "id": fields.Integer,

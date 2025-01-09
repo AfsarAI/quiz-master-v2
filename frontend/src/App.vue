@@ -1,39 +1,59 @@
 <template>
-  <div id="app">
+  <div id="app" :class="{ 'dark-mode': isDarkMode }">
     <AppNavbar />
-    <div class="content">
+    <main class="content">
       <router-view />
-    </div>
+    </main>
     <AppFooter />
+    <DarkModeToggle />
   </div>
 </template>
 
-<script>
+<script setup>
+import { computed } from "vue";
+import { useStore } from "vuex";
 import AppNavbar from "@/components/Navbar.vue";
 import AppFooter from "@/components/Footer.vue";
-export default {
-  name: "App",
-  components: {
-    AppNavbar,
-    AppFooter,
-  },
-};
+import DarkModeToggle from "@/components/DarkModeToggle.vue";
+
+const store = useStore();
+const isDarkMode = computed(() => store.state.isDarkMode);
 </script>
 
 <style>
-body,
-html {
-  overflow-x: hidden;
-}
-
-/* Add this CSS to style the layout */
 #app {
   display: flex;
   flex-direction: column;
-  min-height: 100vh; /* Ensure the app takes full viewport height */
+  min-height: 100vh;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 .content {
-  flex: 1; /* Pushes the footer down if content is small */
+  flex: 1;
+}
+
+.dark-mode {
+  background-color: #2c3e50;
+  color: #f1f1f1;
+}
+
+/* Global styles for dark mode */
+.dark-mode .bg-light {
+  background-color: #34495e !important;
+  color: #f1f1f1;
+}
+
+.dark-mode .text-dark {
+  color: #f1f1f1 !important;
+}
+
+.dark-mode .btn-light {
+  background-color: #f1f1f1;
+  color: #2c3e50;
+}
+
+.dark-mode .card {
+  background-color: #34495e;
+  color: #f1f1f1;
 }
 </style>

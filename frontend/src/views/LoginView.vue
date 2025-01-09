@@ -1,69 +1,107 @@
 <template>
-  <div
-    class="container bg-light p-4 rounded shadow-lg mt-4"
-    style="max-width: 500px"
-  >
-    <h3
-      class="text-center text-primary bg-light border-primary border rounded mb-4 p-3"
-    >
-      Access Your Dashboard
-    </h3>
-    <form @submit.prevent="login">
-      <!-- Email Input -->
-      <div class="mb-3">
-        <label for="email" class="form-label">Email:</label>
-        <input
-          v-model="email"
-          type="email"
-          id="email"
-          class="form-control"
-          placeholder="Enter your email"
-          required
-        />
+  <div class="login-container">
+    <div class="container">
+      <div class="row justify-content-center align-items-center min-vh-100">
+        <div class="col-md-6">
+          <div class="card shadow-lg border-0">
+            <div class="card-body p-5">
+              <h2 class="text-center text-primary mb-4">
+                Access Your Dashboard
+              </h2>
+              <form @submit.prevent="login">
+                <div class="mb-3">
+                  <label for="email" class="form-label">Email:</label>
+                  <div class="input-group">
+                    <span class="input-group-text">
+                      <i class="bi bi-envelope"></i>
+                    </span>
+                    <input
+                      v-model="email"
+                      type="email"
+                      id="email"
+                      class="form-control"
+                      placeholder="Enter your email"
+                      required
+                    />
+                  </div>
+                </div>
+                <div class="mb-3">
+                  <label for="password" class="form-label">Password:</label>
+                  <div class="input-group">
+                    <span class="input-group-text">
+                      <i class="bi bi-lock"></i>
+                    </span>
+                    <input
+                      v-model="password"
+                      :type="showPassword ? 'text' : 'password'"
+                      id="password"
+                      class="form-control"
+                      placeholder="Enter your password"
+                      required
+                    />
+                    <button
+                      class="btn btn-outline-secondary"
+                      type="button"
+                      @click="togglePassword"
+                    >
+                      <i
+                        :class="showPassword ? 'bi bi-eye-slash' : 'bi bi-eye'"
+                      ></i>
+                    </button>
+                  </div>
+                </div>
+                <div class="d-grid gap-2">
+                  <button
+                    type="submit"
+                    class="btn btn-primary btn-lg"
+                    :disabled="isLoading"
+                  >
+                    <span
+                      v-if="isLoading"
+                      class="spinner-border spinner-border-sm me-2"
+                      role="status"
+                      aria-hidden="true"
+                    ></span>
+                    {{ isLoading ? "Logging in..." : "Login" }}
+                  </button>
+                </div>
+              </form>
+              <p class="text-center mt-3">
+                Don't have an account?
+                <router-link
+                  to="/register"
+                  class="text-decoration-none fw-bold"
+                >
+                  Register here
+                </router-link>
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
-
-      <!-- Password Input -->
-      <div class="mb-3">
-        <label for="password" class="form-label">Password:</label>
-        <input
-          v-model="password"
-          type="password"
-          id="password"
-          class="form-control"
-          placeholder="Enter your password"
-          required
-        />
-      </div>
-
-      <!-- Login Button -->
-      <button type="submit" class="btn btn-primary btn-lg w-100 mt-3">
-        Login
-      </button>
-
-      <!-- Register Link -->
-      <p class="text-center mt-3">
-        Don't have an account?
-        <router-link
-          to="/register"
-          class="text-decoration-none text-primary fw-bold"
-        >
-          Register here
-        </router-link>
-      </p>
-    </form>
+    </div>
   </div>
 </template>
 
 <script>
+import { ref } from "vue";
+import { useRouter } from "vue-router";
+
 export default {
-  data() {
-    return {
-      email: "",
-      password: "",
+  name: "LoginPage",
+  setup() {
+    const email = ref("");
+    const password = ref("");
+    const showPassword = ref(false);
+    const isLoading = ref(false);
+    const router = useRouter();
+
+    const togglePassword = () => {
+      showPassword.value = !showPassword.value;
     };
-  },
-  methods: {
-    async login() {
+
+    const login = async () => {
+      isLoading.value = true;
       try {
         const response = await fetch(`${location.origin}/login`, {
           method: "POST",
@@ -71,36 +109,74 @@ export default {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            email: this.email,
-            password: this.password,
+            email: email.value,
+            password: password.value,
           }),
         });
 
         if (response.ok) {
           const data = await response.json();
           localStorage.setItem("user", JSON.stringify(data));
-          this.$store.commit("setUser", data);
           console.log("Token:", data.token);
-          this.$router.push("/admin/dashboard");
+          router.push("/admin/dashboard");
         } else {
           console.error("Login failed", response.statusText);
+          // You might want to show an error message to the user here
         }
       } catch (error) {
         console.error("Error during login:", error);
+        // You might want to show an error message to the user here
+      } finally {
+        isLoading.value = false;
       }
-    },
+    };
+
+    return {
+      email,
+      password,
+      showPassword,
+      isLoading,
+      togglePassword,
+      login,
+    };
   },
 };
 </script>
 
 <style scoped>
-.container {
-  max-width: 500px;
+.login-container {
+  background: linear-gradient(135deg, #3498db, #8e44ad);
+  min-height: 100vh;
+  position: relative;
+  overflow: hidden;
 }
-h3 {
-  background-color: lightblue;
+
+.card {
+  background-color: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
 }
-form {
-  margin-top: 1rem;
+
+.form-control:focus,
+.btn:focus {
+  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+.btn-primary {
+  background-color: #3498db;
+  border-color: #3498db;
+  transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+  background-color: #2980b9;
+  border-color: #2980b9;
+}
+
+.text-primary {
+  color: #3498db !important;
+}
+
+.input-group-text {
+  background-color: #f8f9fa;
 }
 </style>
