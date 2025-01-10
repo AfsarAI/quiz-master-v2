@@ -390,7 +390,9 @@ const hasEnteredData = computed(() => {
 
 const fetchData = async () => {
   try {
-    const qualRes = await fetch("http://127.0.0.1:5000/api/qualifications");
+    const qualRes = await fetch(
+      "http://127.0.0.1:5000/api/user/qualifications"
+    );
     qualifications.value = await qualRes.json();
   } catch (error) {
     console.error("Error fetching qualifications:", error);

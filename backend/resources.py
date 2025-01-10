@@ -1,9 +1,9 @@
 from flask import request, current_app as app
 from flask_restful import Api, Resource, fields, marshal_with
-from flask_security import auth_required
+from flask_security import auth_required, verify_password, hash_password
 from models import db, Qualification, Subject, User
 from sqlalchemy.exc import IntegrityError
-from flask_security.utils import hash_password
+from flask_security.utils import hash_password, verify_password
 from flask_security import SQLAlchemyUserDatastore
 
 
@@ -122,6 +122,32 @@ class UserRegisterResource(Resource):
 
         return {"message": "User created successfully"}, 201
 
+class UserLoginResource(Resource):
+    def post(self):
+        data = request.get_json()
+        email = data.get('email')
+        password = data.get('password')
+
+        if not email:
+            return {"message": "Email is required"}, 400
+
+        if not password:
+            return {"message": "Password is required"}, 400
+
+        # Authenticate the user
+        user = userdatastore.find_user(email=email)
+        
+        if not user:
+            return {"message": "User not found"}, 404
+
+        if not verify_password(password, user.password):
+            return {"message": "Invalid password"}, 400
+
+        # Generate the JWT token
+        # token = userdatastore.create_token(user)
+        token = user.get_auth_token()
+
+        return {"message": "Login successful", "token": token}
 
 
 class QualificationResource(Resource):
@@ -236,6 +262,7 @@ class QualificationSubjectResource(Resource):
 
 api.add_resource(UserResource, '/users/data')
 api.add_resource(UserRegisterResource, '/user/register')
+api.add_resource(UserLoginResource, '/user/login')
 api.add_resource(QualificationResource, '/qualifications')
 api.add_resource(SubjectsWithQualificationResource, '/qualifications/<int:qualification_id>/subjects')
 api.add_resource(SubjectResource, '/subjects')
