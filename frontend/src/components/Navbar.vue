@@ -1,7 +1,9 @@
 <template>
   <nav
+    :data-bs-theme="isDarkMode ? 'dark' : 'light'"
     :class="[
       'navbar',
+      'nav-underline',
       'navbar-expand-lg',
       'shadow',
       'sticky-top',
@@ -104,21 +106,23 @@ export default {
   color: #3498db;
 }
 
-.dark-mode .navbar-brand:hover,
-.dark-mode .nav-link:hover,
-.dark-mode .navbar-nav .nav-link.router-link-exact-active,
-.dark-mode .navbar-nav .nav-link.router-link-active {
+[data-bs-theme="dark"] .navbar-brand:hover,
+[data-bs-theme="dark"] .nav-link:hover,
+[data-bs-theme="dark"] .navbar-nav .nav-link.router-link-exact-active,
+[data-bs-theme="dark"] .navbar-nav .nav-link.router-link-active {
   color: #5dade2;
 }
 
-.dark-mode .btn-outline-primary {
+[data-bs-theme="dark"] .btn-outline-primary {
   color: #5dade2;
   border-color: #5dade2;
 }
 
-.dark-mode .btn-outline-primary:hover,
-.dark-mode .navbar-nav .btn-outline-primary.router-link-exact-active,
-.dark-mode .navbar-nav .btn-outline-primary.router-link-active {
+[data-bs-theme="dark"] .btn-outline-primary:hover,
+[data-bs-theme="dark"]
+  .navbar-nav
+  .btn-outline-primary.router-link-exact-active,
+[data-bs-theme="dark"] .navbar-nav .btn-outline-primary.router-link-active {
   color: #fff;
   background-color: #5dade2;
   border-color: #5dade2;

@@ -1,5 +1,5 @@
-from flask import request, current_app as app
-from flask_restful import Api, Resource, fields, marshal_with
+from flask import jsonify, request, current_app as app
+from flask_restful import Api, Resource, fields, marshal, marshal_with
 from flask_security import auth_required, verify_password, hash_password
 from models import db, Qualification, Subject, User
 from sqlalchemy.exc import IntegrityError
@@ -11,6 +11,13 @@ api = Api(prefix='/api')
 
 userdatastore: SQLAlchemyUserDatastore = app.security.datastore
 
+subjects_fields = {
+    "id": fields.Integer,
+    "name": fields.String,
+    "description": fields.String,
+    "qualification_id": fields.Integer
+}
+
 user_fields = {
     "id": fields.Integer,
     "email": fields.String,
@@ -21,12 +28,15 @@ user_fields = {
     "profile_url": fields.String,
     "address": fields.String,
     "phone": fields.String,
-    "roles": fields.List(fields.String),
-    "subjects": fields.List(fields.String),
+    "roles": fields.List(fields.Nested({
+        "id": fields.Integer,
+        "name": fields.String,
+        "description": fields.String
+    })),
+    "subjects": fields.List(fields.Nested(subjects_fields)),
     "quizzes": fields.List(fields.String),
-    "scores": fields.List(fields.String)
+    "scores": fields.List(fields.String),
 }
-
 
 
 qual_fields = {
@@ -35,13 +45,6 @@ qual_fields = {
     "description": fields.String,
     "subjects": fields.List(fields.String),
     "users": fields.List(fields.String)
-}
-
-subjects_fields = {
-    "id": fields.Integer,
-    "name": fields.String,
-    "description": fields.String,
-    "qualification_id": fields.Integer
 }
 
 class UserResource(Resource):
@@ -146,10 +149,12 @@ class UserLoginResource(Resource):
         # Generate the JWT token
         # token = userdatastore.create_token(user)
         token = user.get_auth_token()
-
-        return {"message": "Login successful", "token": token}
-
-
+         # Serialize user using user_fields
+        serialized_user = marshal(user, user_fields)
+        # Add the token to the response
+        serialized_user["token"] = token
+        return serialized_user, 200
+    
 class QualificationResource(Resource):
     @marshal_with(qual_fields)
     def get(self):

@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from "vue-router";
+import store from "../store"; // Vuex Store
 import HomeView from "../views/HomeView.vue";
 
 const routes = [
@@ -13,9 +14,6 @@ const routes = [
   {
     path: "/about",
     name: "about",
-    // route level code-splitting
-    // this generates a separate chunk (about.[hash].js) for this route
-    // which is lazy-loaded when the route is visited.
     component: () =>
       import(/* webpackChunkName: "about" */ "../views/AboutView.vue"),
     meta: { title: "About" },
@@ -34,6 +32,13 @@ const routes = [
       import(/* webpackChunkName: "login" */ "../views/LoginView.vue"),
     meta: { title: "Login" },
   },
+  {
+    path: "/:role/:user_id/dashboard",
+    name: "dashboard",
+    component: () =>
+      import(/* webpackChunkName: "dashboard" */ "../views/DashboardView.vue"),
+    meta: { requiresLogin: true, title: "Dashboard" },
+  },
 ];
 
 const router = createRouter({
@@ -42,11 +47,32 @@ const router = createRouter({
   linkActiveClass: "active",
 });
 
-// Global Navigation Guard to update the title
+// Global Navigation Guard
 router.beforeEach((to, from, next) => {
-  // Set the title from the route meta or fallback to default
   document.title = to.meta.title || "Default Title";
-  next();
+
+  // Check if the route requires login
+  if (to.matched.some((record) => record.meta.requiresLogin)) {
+    const isAuthenticated = store.state.user.loggedIn;
+
+    if (!isAuthenticated) {
+      // If user is not authenticated, redirect to login page
+      next("/login");
+      console.log("User is not logged in, redirecting to login...");
+    } else {
+      // If authenticated, check for role access and route parameters
+      const userRole = store.state.user.roles[0]?.name;
+      if (to.name === "dashboard" && userRole !== to.params.role) {
+        alert("Access Denied: Invalid Role");
+        next("/"); // Redirect to home if role mismatch
+      } else {
+        next(); // Allow navigation if authenticated and authorized
+      }
+    }
+  } else {
+    // No login required for the route
+    next();
+  }
 });
 
 export default router;

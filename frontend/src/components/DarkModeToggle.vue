@@ -15,7 +15,7 @@ export default {
     const isDarkMode = computed(() => store.state.isDarkMode);
 
     const toggleDarkMode = () => {
-      store.commit("toggleDarkMode");
+      store.commit("toggleDarkMode"); // Toggle Dark Mode and store it in localStorage
     };
 
     return {
@@ -47,12 +47,12 @@ export default {
   background-color: rgba(41, 128, 185, 0.9);
 }
 
-.dark-mode .dark-mode-toggle {
+[data-bs-theme="dark"] .dark-mode-toggle {
   background-color: rgba(241, 196, 15, 0.7);
   color: #333;
 }
 
-.dark-mode .dark-mode-toggle:hover {
+[data-bs-theme="dark"] .dark-mode-toggle:hover {
   background-color: rgba(243, 156, 18, 0.9);
 }
 </style>

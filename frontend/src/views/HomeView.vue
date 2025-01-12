@@ -1,7 +1,10 @@
 <template>
   <div class="home-page">
     <HeroSection />
-    <FeaturesSection />
+
+    <animated-section>
+      <FeaturesSection />
+    </animated-section>
 
     <animated-section>
       <PopularQuizzesSection />
@@ -33,6 +36,7 @@ import CtaSection from "@/components/HomePage/CtaSection.vue";
   font-family: "Arial", sans-serif;
   margin: 0;
   padding: 0;
+  color: #212529;
 }
 
 /* Remove the background gradient from here */

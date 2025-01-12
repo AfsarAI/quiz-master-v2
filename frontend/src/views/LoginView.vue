@@ -1,5 +1,5 @@
 <template>
-  <div class="login-container">
+  <div class="login-container" :data-bs-theme="isDarkMode ? 'dark' : 'light'">
     <div class="container">
       <div class="row justify-content-center align-items-center min-vh-100">
         <div class="col-md-6">
@@ -8,6 +8,18 @@
               <h2 class="text-center text-primary mb-4">
                 Access Your Dashboard
               </h2>
+
+              <div
+                v-if="alertMessage"
+                :class="`alert alert-${alertType} mt-3`"
+                role="alert"
+              >
+                {{ alertMessage }}
+              </div>
+              <h6 class="text-muted mt-2" v-if="alertMessage">
+                Please ensure your email and password are correct.
+              </h6>
+
               <form @submit.prevent="login">
                 <div class="mb-3">
                   <label for="email" class="form-label">Email:</label>
@@ -86,6 +98,8 @@
 <script>
 import { ref } from "vue";
 import { useRouter } from "vue-router";
+import { useStore } from "vuex";
+import { computed } from "vue";
 
 export default {
   name: "LoginPage",
@@ -94,65 +108,151 @@ export default {
     const password = ref("");
     const showPassword = ref(false);
     const isLoading = ref(false);
+    const alertMessage = ref("");
+    const alertType = ref("");
     const router = useRouter();
+    const store = useStore();
+    const isDarkMode = computed(() => store.state.isDarkMode);
 
     const togglePassword = () => {
       showPassword.value = !showPassword.value;
     };
 
+    const closeAlert = () => {
+      alertMessage.value = "";
+    };
+
+    const showAlert = (message, type) => {
+      alertMessage.value = message;
+      alertType.value = type;
+
+      setTimeout(() => {
+        alertMessage.value = "";
+      }, 5000);
+    };
+
     const login = async () => {
       isLoading.value = true;
       try {
-        const response = await fetch(`http://127.0.0.1:5000/api/user/login`, {
+        const userData = {
+          email: email.value,
+          password: password.value,
+        };
+
+        const response = await fetch("http://127.0.0.1:5000/api/user/login", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            email: email.value,
-            password: password.value,
-          }),
+          body: JSON.stringify(userData),
         });
 
         if (response.ok) {
           const data = await response.json();
-          localStorage.setItem("user", JSON.stringify(data));
-          console.log("Token:", data.token);
-          router.push("/admin/dashboard");
+          showAlert("Login successful!", "success");
+          store.dispatch("addToast", {
+            message: "Login successful!",
+            type: "success",
+          });
+          email.value = "";
+          password.value = "";
+          if (data.token && data.roles) {
+            const userRole = data.roles[0]?.name || null;
+            const userId = data.id;
+            localStorage.setItem("user", JSON.stringify(data));
+            store.commit("setUser");
+            if (userRole && userId) {
+              router.push(`${userRole}/${userId}/dashboard`);
+            }
+          } else {
+            router.push("/");
+          }
         } else {
-          console.error("Login failed", response.statusText);
-          // You might want to show an error message to the user here
+          showAlert("Invalid email or password. Please try again.", "danger");
+          store.dispatch("addToast", {
+            message: "Invalid email or password.",
+            type: "danger",
+          });
+          email.value = "";
+          password.value = "";
         }
       } catch (error) {
-        console.error("Error during login:", error);
-        // You might want to show an error message to the user here
+        showAlert("An error occurred. Please try again later.", "danger");
+        store.dispatch("addToast", {
+          message: "An error occurred. Please try again.",
+          type: "danger",
+        });
+        email.value = "";
+        password.value = "";
       } finally {
         isLoading.value = false;
       }
     };
 
     return {
+      isDarkMode,
       email,
       password,
       showPassword,
       isLoading,
       togglePassword,
       login,
+      alertMessage,
+      alertType,
+      closeAlert,
     };
   },
 };
 </script>
 
 <style scoped>
+.alert {
+  animation: fadeIn 0.3s ease, fadeOut 0.5s 4.5s ease-in-out;
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
 .login-container {
-  background: linear-gradient(135deg, #3498db, #8e44ad);
+  background: linear-gradient(135deg, #3a0ca3, #4361ee, #8e44ad);
   min-height: 100vh;
   position: relative;
   overflow: hidden;
 }
 
+.login-container::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: url('data:image/svg+xml;charset=utf8,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320"%3E%3Cpath fill="%23ffffff" fill-opacity="0.05" d="M0,96L48,112C96,128,192,160,288,186.7C384,213,480,235,576,213.3C672,192,768,128,864,128C960,128,1056,192,1152,208C1248,224,1344,192,1392,176L1440,160L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"%3E%3C/path%3E%3C/svg%3E')
+    no-repeat bottom;
+  background-size: cover;
+}
+
+[data-bs-theme="dark"] .login-container {
+  background: #34495e;
+}
+
 .card {
-  background-color: rgba(255, 255, 255, 0.9);
+  /* background-color: rgba(255, 255, 255, 0.9); */
   backdrop-filter: blur(10px);
 }
 
@@ -174,9 +274,5 @@ export default {
 
 .text-primary {
   color: #3498db !important;
-}
-
-.input-group-text {
-  background-color: #f8f9fa;
 }
 </style>

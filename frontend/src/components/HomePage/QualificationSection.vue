@@ -54,3 +54,41 @@ export default {
   },
 };
 </script>
+
+<style scoped>
+h2 {
+  color: #4361ee;
+}
+
+[data-bs-theme="light"] .card {
+  padding: 20px;
+  border-radius: 8px;
+  background-color: #f4f4f4;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  transition: transform 0.3s ease, box-shadow 0.3s ease,
+    background-color 0.3s ease, color 0.3s ease;
+}
+[data-bs-theme="light"] .card:hover {
+  transform: scale(1.05); /* Slight zoom */
+  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2); /* Shadow increase */
+  background: linear-gradient(135deg, #3a0ca3, #4361ee, #4cc9f0);
+  color: white; /* Text color change */
+}
+
+[data-bs-theme="dark"] .card {
+  padding: 20px;
+  border-radius: 8px;
+  background-color: #34495e;
+  box-shadow: 0 4px 6px rgb(255, 254, 254);
+  text-align: center;
+  transition: transform 0.3s ease, box-shadow 0.3s ease,
+    background-color 0.3s ease, color 0.3s ease;
+}
+[data-bs-theme="dark"] .card:hover {
+  transform: scale(1.05); /* Slight zoom */
+  box-shadow: 0 8px 15px rgb(255, 254, 254); /* Shadow increase */
+  background: linear-gradient(135deg, #1a0029, #2b0057, #3a0085);
+  color: white; /* Text color change */
+}
+</style>
