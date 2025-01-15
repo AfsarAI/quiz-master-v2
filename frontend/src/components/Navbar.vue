@@ -14,9 +14,7 @@
     ]"
   >
     <div class="container">
-      <router-link to="/" class="navbar-brand fw-bold">
-        Quiz Master
-      </router-link>
+      <router-link to="/" class="navbar-brand fw-bold">Quiz Master</router-link>
       <button
         class="navbar-toggler"
         type="button"
@@ -28,20 +26,58 @@
       >
         <span class="navbar-toggler-icon"></span>
       </button>
+
       <div class="collapse navbar-collapse" id="navbarNav">
         <ul class="navbar-nav ms-auto align-items-center">
           <li class="nav-item">
             <router-link to="/" class="nav-link" exact>Home</router-link>
           </li>
-          <li class="nav-item">
-            <router-link to="/register" class="btn btn-outline-primary ms-2">
-              Register
-            </router-link>
-          </li>
-          <li class="nav-item">
-            <router-link to="/login" class="btn btn-outline-primary ms-2">
-              Login
-            </router-link>
+          <template v-if="!isLoggedIn">
+            <li class="nav-item">
+              <router-link to="/register" class="btn btn-outline-primary ms-2">
+                Register
+              </router-link>
+            </li>
+            <li class="nav-item">
+              <router-link to="/login" class="btn btn-outline-primary ms-2">
+                Login
+              </router-link>
+            </li>
+          </template>
+          <template v-else>
+            <template v-if="isDashboardPage">
+              <li class="nav-item">
+                <router-link :to="dashboardLink" class="nav-link"
+                  >Dashboard</router-link
+                >
+              </li>
+              <li class="nav-item">
+                <router-link to="/progress" class="nav-link"
+                  >Progress</router-link
+                >
+              </li>
+              <li class="nav-item">
+                <a
+                  href="#"
+                  @click.prevent="logout"
+                  class="btn btn-outline-primary ms-2"
+                >
+                  Logout
+                </a>
+              </li>
+            </template>
+            <template v-else>
+              <li class="nav-item">
+                <router-link :to="dashboardLink" class="nav-link"
+                  >Dashboard</router-link
+                >
+              </li>
+            </template>
+          </template>
+          <li class="nav-item ms-2">
+            <button @click="toggleDarkMode" class="btn btn-outline-secondary">
+              {{ isDarkMode ? "Light" : "Dark" }} Mode
+            </button>
           </li>
         </ul>
       </div>
@@ -52,15 +88,64 @@
 <script>
 import { computed } from "vue";
 import { useStore } from "vuex";
+import { useRouter, useRoute } from "vue-router";
 
 export default {
   name: "AppNavbar",
   setup() {
     const store = useStore();
+    const router = useRouter();
+    const route = useRoute();
+
     const isDarkMode = computed(() => store.state.isDarkMode);
+    const isLoggedIn = computed(() => store.state.user.loggedIn);
+    const userRole = computed(() => store.state.user.roles[0].name || "guest");
+    const userId = computed(() => store.state.user.id);
+
+    const dashboardLink = computed(() => {
+      return `/${userRole.value}/${userId.value}/dashboard`;
+    });
+
+    // Compute if the current route is a dashboard page
+    const isDashboardPage = computed(() => {
+      const expectedDashboardPath = `/${userRole.value}/${userId.value}/dashboard`;
+      return route.path === expectedDashboardPath;
+    });
+
+    const toggleDarkMode = () => {
+      store.commit("toggleDarkMode");
+    };
+
+    const logout = () => {
+      const confirmLogout = confirm("Are you sure you want to log out?");
+      if (!confirmLogout) {
+        return;
+      }
+
+      try {
+        store.dispatch("logout");
+        store.dispatch("addToast", {
+          message: "Logout successful!",
+          type: "success",
+        });
+        router.push("/");
+      } catch (error) {
+        console.error("Logout failed:", error);
+        store.dispatch("addToast", {
+          message: "An error occurred while logging out. Please try again.",
+          type: "danger",
+        });
+      }
+    };
 
     return {
       isDarkMode,
+      isLoggedIn,
+      userRole,
+      dashboardLink,
+      isDashboardPage,
+      toggleDarkMode,
+      logout,
     };
   },
 };

@@ -133,10 +133,11 @@ export default {
 
     const login = async () => {
       isLoading.value = true;
+
       try {
         const userData = {
-          email: email.value,
-          password: password.value,
+          email: email.value.trim(),
+          password: password.value.trim(),
         };
 
         const response = await fetch("http://127.0.0.1:5000/api/user/login", {
@@ -147,46 +148,66 @@ export default {
           body: JSON.stringify(userData),
         });
 
-        if (response.ok) {
-          const data = await response.json();
-          showAlert("Login successful!", "success");
-          store.dispatch("addToast", {
-            message: "Login successful!",
-            type: "success",
-          });
-          email.value = "";
-          password.value = "";
-          if (data.token && data.roles) {
-            const userRole = data.roles[0]?.name || null;
-            const userId = data.id;
-            localStorage.setItem("user", JSON.stringify(data));
-            store.commit("setUser");
-            if (userRole && userId) {
-              router.push(`${userRole}/${userId}/dashboard`);
-            }
-          } else {
-            router.push("/");
-          }
+        if (!response.ok) {
+          // Handle invalid login scenario
+          handleError("Invalid email or password. Please try again.", "danger");
+          return;
+        }
+
+        const data = await response.json();
+
+        // Validate the response for required fields
+        if (data.token && data.roles) {
+          handleSuccess(data);
         } else {
-          showAlert("Invalid email or password. Please try again.", "danger");
-          store.dispatch("addToast", {
-            message: "Invalid email or password.",
-            type: "danger",
-          });
-          email.value = "";
-          password.value = "";
+          router.push("/");
         }
       } catch (error) {
-        showAlert("An error occurred. Please try again later.", "danger");
-        store.dispatch("addToast", {
-          message: "An error occurred. Please try again.",
-          type: "danger",
-        });
-        email.value = "";
-        password.value = "";
+        // Handle network or server error
+        handleError("An error occurred. Please try again later.", "danger");
       } finally {
+        // Always stop the loading indicator
         isLoading.value = false;
       }
+    };
+
+    // Helper function to handle success scenario
+    const handleSuccess = (data) => {
+      showAlert("Login successful!", "success");
+      store.dispatch("addToast", {
+        message: "Login successful!",
+        type: "success",
+      });
+
+      // Clear input fields
+      clearInputFields();
+
+      // Store user data in localStorage and Vuex
+      localStorage.setItem("user", JSON.stringify(data));
+      store.dispatch("login", data);
+
+      // Redirect to role-specific dashboard
+      const userRole = data.roles[0]?.name || null;
+      const userId = data.id;
+
+      if (userRole && userId) {
+        router.push(`${userRole}/${userId}/dashboard`);
+      } else {
+        router.push("/");
+      }
+    };
+
+    // Helper function to handle errors
+    const handleError = (message, type) => {
+      showAlert(message, type);
+      store.dispatch("addToast", { message, type });
+      clearInputFields();
+    };
+
+    // Helper function to clear input fields
+    const clearInputFields = () => {
+      email.value = "";
+      password.value = "";
     };
 
     return {

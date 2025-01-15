@@ -47,7 +47,6 @@ const router = createRouter({
   linkActiveClass: "active",
 });
 
-// Global Navigation Guard
 router.beforeEach((to, from, next) => {
   document.title = to.meta.title || "Default Title";
 
@@ -61,7 +60,7 @@ router.beforeEach((to, from, next) => {
       console.log("User is not logged in, redirecting to login...");
     } else {
       // If authenticated, check for role access and route parameters
-      const userRole = store.state.user.roles[0]?.name;
+      const userRole = store.state.user.roles[0]?.name; // Assuming the role is a string, not a value object
       if (to.name === "dashboard" && userRole !== to.params.role) {
         alert("Access Denied: Invalid Role");
         next("/"); // Redirect to home if role mismatch
