@@ -1,7 +1,7 @@
 <template>
   <aside class="sidebar" :class="{ collapsed: isSidebarCollapsed }">
     <div class="sidebar-header">
-      <h3 v-if="!isSidebarCollapsed" class="mb-0">Quiz Master</h3>
+      <h3 v-if="!isSidebarCollapsed" class="mb-0">App Dashboard</h3>
       <button @click="toggleSidebar" class="btn btn-link sidebar-toggle">
         <i
           class="bi"
@@ -11,16 +11,15 @@
     </div>
     <nav class="sidebar-nav">
       <ul class="nav flex-column">
-        <li class="nav-item" v-for="item in sidebarItems" :key="item.id">
-          <a
-            class="nav-link"
-            href="#"
-            @click="setActiveSection(item.id)"
-            :class="{ active: activeSection === item.id }"
-          >
-            <i :class="item.icon"></i>
-            <span v-if="!isSidebarCollapsed">{{ item.name }}</span>
-          </a>
+        <li
+          v-for="item in filteredMenuItems"
+          :key="item.text"
+          :class="{ active: isActive(item.route) }"
+        >
+          <router-link class="nav-link" :to="fullPath(item.route)">
+            <i :class="item.icon" class="me-2"></i>
+            <span v-if="!isSidebarCollapsed">{{ item.text }}</span>
+          </router-link>
         </li>
       </ul>
     </nav>
@@ -29,49 +28,88 @@
 
 <script>
 import { computed } from "vue";
-import { useStore } from "vuex";
+import { useRoute } from "vue-router";
 
 export default {
   name: "SideBar",
   props: {
-    isSidebarCollapsed: Boolean,
+    isSidebarCollapsed: {
+      type: Boolean,
+      default: false,
+    },
+    role: {
+      type: String,
+      required: true,
+    },
   },
+  emits: ["toggle-sidebar"],
   setup(props, { emit }) {
-    const store = useStore();
-    const activeSection = computed(() => store.state.activeSection);
-    const user = computed(() => store.state.user);
+    const route = useRoute();
 
-    const sidebarItems = computed(() => {
-      if (user.value.roles.includes("Admin")) {
-        return [
-          { id: "overview", name: "Overview", icon: "bi bi-speedometer2" },
-          { id: "classes", name: "Classes", icon: "bi bi-book" },
-          { id: "quizzes", name: "Quizzes", icon: "bi bi-question-circle" },
-          { id: "users", name: "Users", icon: "bi bi-people" },
-        ];
-      } else {
-        return [
-          { id: "overview", name: "Overview", icon: "bi bi-speedometer2" },
-          { id: "quizzes", name: "Quizzes", icon: "bi bi-question-circle" },
-          { id: "progress", name: "Progress", icon: "bi bi-graph-up" },
-          { id: "profile", name: "Profile", icon: "bi bi-person" },
-        ];
-      }
+    const basePath = computed(() => {
+      const parts = route.path.split("/");
+      return parts.slice(0, 3).join("/"); // Adjusts to `admin/1` dynamically
     });
 
-    const toggleSidebar = () => {
-      emit("toggle-sidebar");
-    };
+    const menuItems = computed(() => [
+      {
+        text: "Overview",
+        route: "dashboard/overview",
+        roles: ["admin"],
+        icon: "bi bi-house",
+      },
+      {
+        text: "Classes",
+        route: "dashboard/classes",
+        roles: ["admin"],
+        icon: "bi bi-collection",
+      },
+      {
+        text: "Users",
+        route: "dashboard/users",
+        roles: ["admin"],
+        icon: "bi bi-people",
+      },
+      {
+        text: "Home",
+        route: "dashboard/home",
+        roles: ["user"],
+        icon: "bi bi-house",
+      },
+      {
+        text: "Quizzes",
+        route: "dashboard/quizzes",
+        roles: ["admin", "user"],
+        icon: "bi bi-question-circle",
+      },
+      {
+        text: "Progress",
+        route: "dashboard/progress",
+        roles: ["user"],
+        icon: "bi bi-bar-chart",
+      },
+      {
+        text: "Profile",
+        route: "dashboard/profile",
+        roles: ["user"],
+        icon: "bi bi-person",
+      },
+    ]);
 
-    const setActiveSection = (sectionId) => {
-      store.dispatch("updateActiveSection", sectionId);
-    };
+    const filteredMenuItems = computed(() =>
+      menuItems.value.filter((item) => item.roles.includes(props.role))
+    );
+
+    const toggleSidebar = () => emit("toggle-sidebar");
+    const isActive = (path) => route.path.includes(path);
+
+    const fullPath = (route) => `${basePath.value}/${route}`;
 
     return {
-      activeSection,
-      sidebarItems,
+      filteredMenuItems,
       toggleSidebar,
-      setActiveSection,
+      isActive,
+      fullPath,
     };
   },
 };
@@ -116,6 +154,7 @@ export default {
   padding: 0.5rem 1rem;
   display: flex;
   align-items: center;
+  text-decoration: none;
   transition: all 0.3s ease;
 }
 
@@ -133,6 +172,10 @@ export default {
 [data-bs-theme="dark"] .sidebar-nav .nav-link.active {
   background-color: #2c3e50;
   color: #5dade2;
+}
+
+.sidebar-nav .nav-link.active {
+  font-weight: bold;
 }
 
 .sidebar-nav .nav-link i {

@@ -5,12 +5,13 @@
   >
     <SideBar
       :isSidebarCollapsed="isSidebarCollapsed"
+      :role="role"
       @toggle-sidebar="toggleSidebar"
     />
     <main class="main-content">
       <DashboardHeader />
       <div class="dashboard-content">
-        <component :is="currentDashboard"></component>
+        <component :is="currentDashboard" />
       </div>
     </main>
   </div>
@@ -18,55 +19,39 @@
 
 <script>
 import { ref, computed } from "vue";
-import { useStore } from "vuex";
-import { useRouter } from "vue-router";
+import { useRoute } from "vue-router";
 import SideBar from "@/components/SideBar.vue";
 import DashboardHeader from "@/components/DashboardHeader.vue";
-import AdminDashboard from "@/components/AdminDashboard.vue";
 import UserDashboard from "@/components/UserDashboard.vue";
+import AdminDashboard from "@/components/AdminDashboard.vue";
 
 export default {
   name: "DashboardView",
   components: {
     SideBar,
     DashboardHeader,
-    AdminDashboard,
     UserDashboard,
+    AdminDashboard,
   },
   setup() {
-    const store = useStore();
-    const router = useRouter();
-
-    const user = computed(() => store.state.user);
-    const isDarkMode = computed(() => store.state.isDarkMode);
+    const route = useRoute();
     const isSidebarCollapsed = ref(false);
-
-    const currentDashboard = computed(() => {
-      return user.value.roles.includes("Admin")
-        ? AdminDashboard
-        : UserDashboard;
-    });
 
     const toggleSidebar = () => {
       isSidebarCollapsed.value = !isSidebarCollapsed.value;
     };
 
-    const toggleDarkMode = () => {
-      store.commit("toggleDarkMode");
-    };
+    const role = computed(() => route.params.role);
 
-    const logout = () => {
-      store.dispatch("logout");
-      router.push("/login");
-    };
+    const currentDashboard = computed(() => {
+      return role.value === "admin" ? AdminDashboard : UserDashboard;
+    });
 
     return {
-      isDarkMode,
       isSidebarCollapsed,
-      currentDashboard,
       toggleSidebar,
-      toggleDarkMode,
-      logout,
+      currentDashboard,
+      role,
     };
   },
 };

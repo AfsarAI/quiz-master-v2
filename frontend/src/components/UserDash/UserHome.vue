@@ -1,12 +1,12 @@
 <template>
-  <div class="user-overview">
-    <h2>User Dashboard</h2>
+  <div class="user-home">
+    <h2>User Try!</h2>
     <!-- Add user dashboard content here -->
   </div>
 </template>
 
 <script>
 export default {
-  name: "UserOverview",
+  name: "UserHome",
 };
 </script>
