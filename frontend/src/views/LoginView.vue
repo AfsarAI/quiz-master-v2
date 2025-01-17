@@ -155,6 +155,7 @@ export default {
         }
 
         const data = await response.json();
+        console.log(data);
 
         // Validate the response for required fields
         if (data.token && data.roles) {
@@ -165,6 +166,7 @@ export default {
       } catch (error) {
         // Handle network or server error
         handleError("An error occurred. Please try again later.", "danger");
+        console.log(error);
       } finally {
         // Always stop the loading indicator
         isLoading.value = false;
@@ -182,9 +184,23 @@ export default {
       // Clear input fields
       clearInputFields();
 
-      // Store user data in localStorage and Vuex
-      localStorage.setItem("user", JSON.stringify(data));
-      store.dispatch("login", data);
+      const minimaldata = {
+        id: data.id,
+        roles: data.roles,
+        fullname: data.fullname,
+        token: data.token,
+      };
+
+      try {
+        // Store user data in localStorage and Vuex
+        localStorage.removeItem("user"); // Clear previous user data
+        localStorage.setItem("user", JSON.stringify(minimaldata));
+        console.log("User saved in localStorage successfully:", minimaldata);
+        store.dispatch("login", minimaldata);
+      } catch (error) {
+        console.error("Error saving user to localStorage:", error);
+        alert("Failed to save user data. Storage limit exceeded.");
+      }
 
       // Redirect to role-specific dashboard
       const userRole = data.roles[0]?.name || null;

@@ -26,6 +26,7 @@ def create_initial_data():
                     password=hash_password('pass'),
                     fullname='Admin User',
                     dob=datetime.strptime('1980-01-01', '%Y-%m-%d'),
+                    gender = 'male',
                     qualification_id=admin_qualification.id,  # Provide a valid qualification ID
                     roles=[admin_role]
                 )
@@ -39,6 +40,7 @@ def create_initial_data():
                     password=hash_password('pass'),
                     fullname='Test User',
                     dob=datetime.strptime('2000-01-01', '%Y-%m-%d'),
+                    gender = 'male',
                     qualification_id=user_qualification.id,  # Provide a valid qualification ID
                     roles=[user_role]
                 )

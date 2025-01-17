@@ -442,20 +442,26 @@ const toggleConfirmPassword = () => {
 };
 
 const register = async () => {
+  if (password.value !== confirmPassword.value) {
+    alert("Passwords do not match!");
+    return;
+  }
+
   const userData = {
     fullname: fullname.value,
     email: email.value,
     password: password.value,
-    confirmPassword: confirmPassword.value,
     dob: dob.value,
     gender: gender.value,
-    qualification_id: qualification.value,
-    subjects: selectedSubjects.value,
     address: address.value,
     phone: phone.value,
+    profilePicUrl: profilePicUrl.value,
+    qualification_id: qualification.value,
+    subjects: selectedSubjects.value,
   };
+  console.log(userData);
   try {
-    const response = await fetch("/api/register", {
+    const response = await fetch("http://127.0.0.1:5000/api/user/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(userData),

@@ -25,6 +25,7 @@ export default {
     const router = useRouter();
 
     const userName = computed(() => store.state.user.fullName);
+    const isDarkMode = computed(() => store.state.isDarkMode);
 
     const toggleDarkMode = () => {
       store.commit("toggleDarkMode");
@@ -54,6 +55,7 @@ export default {
 
     return {
       toggleDarkMode,
+      isDarkMode,
       logout,
       userName,
     };

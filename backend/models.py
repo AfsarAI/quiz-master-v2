@@ -11,6 +11,7 @@ class User(db.Model, UserMixin):
     password = db.Column(db.String(150), nullable=False)
     fullname = db.Column(db.String(100), nullable=False)
     dob = db.Column(db.Date, nullable=False)
+    gender = db.Column(db.String, nullable=False)
     qualification_id = db.Column(db.Integer, db.ForeignKey('qualification.id'), nullable=False)
     profile_url = db.Column(db.String(255), nullable=True)
     address = db.Column(db.String)

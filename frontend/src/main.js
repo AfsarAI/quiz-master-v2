@@ -17,9 +17,30 @@ store.dispatch("initializeUser");
 
 // Check dark mode from localStorage and set Vuex state
 const storedDarkMode = JSON.parse(localStorage.getItem("isDarkMode"));
+console.log(storedDarkMode);
 if (storedDarkMode !== null) {
   store.commit("toggleDarkMode", storedDarkMode); // Update Vuex state based on localStorage
 }
+
+// for localStorage size ceck!
+function calculateLocalStorageSize() {
+  let totalSize = 0; // Total storage size in bytes
+  const details = []; // Array to store details of each key
+
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i); // Get the key
+    const value = localStorage.getItem(key); // Get the value of the key
+    const size = new Blob([value]).size; // Calculate size of the value in bytes
+
+    totalSize += size;
+    details.push({ key, size: size / 1024 }); // Convert size to KB
+  }
+
+  console.log("Key-wise size in KB:", details);
+  console.log("Total size in MB:", totalSize / 1024 / 1024, "MB");
+}
+
+calculateLocalStorageSize();
 
 app.directive("observe", ObserveDirective);
 

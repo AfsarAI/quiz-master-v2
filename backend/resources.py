@@ -1,4 +1,5 @@
-from flask import jsonify, request, current_app as app
+from datetime import datetime
+from flask import request, current_app as app
 from flask_restful import Api, Resource, fields, marshal, marshal_with
 from flask_security import auth_required, verify_password, hash_password
 from models import db, Qualification, Subject, User
@@ -60,30 +61,22 @@ class UserResource(Resource):
 class UserRegisterResource(Resource):
     def post(self):
         data = request.get_json()
+        
+        # Extract data from the request
         email = data.get('email')
         password = data.get('password')
         fullname = data.get('fullname')
         dob = data.get('dob')
+        gender = data.get('gender')
         qualification_id = data.get('qualification_id')
-        subjects = data.get('subjects', [])
-        profile_url = data.get('profile_url')
+        subject_ids = data.get('subjects', [])  # List of subject IDs from frontend
+        profile_url = data.get('profilePicUrl')
         address = data.get('address')
         phone = data.get('phone')
 
-        if not email:
-            return {"message": "Email is required"}, 400
-
-        if not password:
-            return {"message": "Password is required"}, 400
-
-        if not fullname:
-            return {"message": "Fullname is required"}, 400
-
-        if not dob:
-            return {"message": "Date of Birth is required"}, 400
-
-        if not qualification_id:
-            return {"message": "Qualification is required"}, 400
+        # Basic validations
+        if not email or not password or not fullname or not dob or not qualification_id:
+            return {"message": "Missing required fields"}, 400
 
         # Check if the qualification exists
         qualification = Qualification.query.get(qualification_id)
@@ -95,35 +88,43 @@ class UserRegisterResource(Resource):
         if existing_user:
             return {"message": "User already registered. Please login."}, 400
 
+        # Fetch Subject objects from IDs
+        subjects = Subject.query.filter(Subject.id.in_(subject_ids)).all()
+        if len(subjects) != len(subject_ids):
+            return {"message": "Some subjects not found. Please check the IDs."}, 400
+
         # Create the user using Flask-Security
         try:
+            dob = datetime.strptime(data['dob'], '%Y-%m-%d').date()
+            
             # Create the user
-            userdatastore.create_user(
+            new_user = userdatastore.create_user(
                 email=email,
                 password=hash_password(password),
                 fullname=fullname,
                 dob=dob,
+                gender=gender,
                 qualification_id=qualification_id,
-                subjects=subjects,
                 profile_url=profile_url,
                 address=address,
-                phone=phone
+                phone=phone,
+                subjects=subjects  # Attach the subject objects here
             )
-            
+
             # Assign the default role
             default_role = userdatastore.find_role('user')
-            if not default_role:
-                return {"error": "Default role 'user' not found"}, 500
-            userdatastore.add_role_to_user(email, default_role)
-            
+            if default_role:
+                userdatastore.add_role_to_user(new_user, default_role)
+
             # Commit the transaction
             db.session.commit()
 
-        except IntegrityError as e:
+        except Exception as e:
             db.session.rollback()
-            return {"error": f"Database error: {str(e.orig)}"}, 500
+            return {"error": f"Database error: {str(e)}"}, 500
 
         return {"message": "User created successfully"}, 201
+
 
 class UserLoginResource(Resource):
     def post(self):
@@ -266,8 +267,8 @@ class QualificationSubjectResource(Resource):
 
 
 api.add_resource(UserResource, '/users/data')
-api.add_resource(UserRegisterResource, '/user/register')
-api.add_resource(UserLoginResource, '/user/login')
+api.add_resource(UserRegisterResource, '/user/register', methods=['POST'])
+api.add_resource(UserLoginResource, '/user/login', methods=['POST'])
 api.add_resource(QualificationResource, '/qualifications')
 api.add_resource(SubjectsWithQualificationResource, '/qualifications/<int:qualification_id>/subjects')
 api.add_resource(SubjectResource, '/subjects')

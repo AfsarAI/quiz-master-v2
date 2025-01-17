@@ -21,27 +21,52 @@ export default createStore({
         state.isDarkMode = !state.isDarkMode;
       }
       localStorage.setItem("isDarkMode", JSON.stringify(state.isDarkMode));
+      const dark = localStorage.getItem("isDarkMode");
+      console.log("darkmode!", dark);
     },
     setUser(state, user) {
-      if (user) {
-        state.user = {
-          auth_token: user.token,
-          roles: user.roles || [],
-          loggedIn: true,
-          id: user.id,
-          fullName: user.fullname || "Guest",
-        };
-        localStorage.setItem("user", JSON.stringify(user));
+      state.user = {
+        auth_token: user.token,
+        roles: user.roles || [],
+        loggedIn: true,
+        id: user.id,
+        fullName: user.fullname || "Guest",
+      };
+
+      const data = localStorage.getItem("user");
+      // If 'user' exists, print it; otherwise, print a message
+      if (data) {
+        console.log(
+          "Don't need to store again!, User found in localStorage:",
+          JSON.parse(data)
+        );
       } else {
-        state.user = {
-          auth_token: null,
-          roles: [],
-          loggedIn: false,
-          id: null,
-          fullName: "",
-        };
-        localStorage.removeItem("user");
+        localStorage.setItem("user", JSON.stringify(user));
+        console.log("User Added Sussesfully!", data);
       }
+    },
+    removeUser(state) {
+      state.user = {
+        auth_token: null,
+        roles: [],
+        loggedIn: false,
+        id: null,
+        fullName: "",
+      };
+      localStorage.removeItem("user");
+      console.log("User Removed!");
+      // Check if 'user' key exists in localStorage
+      const user = localStorage.getItem("user");
+
+      // If 'user' exists, print it; otherwise, print a message
+      if (user) {
+        console.log("User found in localStorage:", JSON.parse(user));
+      } else {
+        console.log("No user found in localStorage.");
+      }
+      console.log(
+        new Blob(Object.values(localStorage)).size / 1024 / 1024 + " MB"
+      );
     },
     ADD_TOAST(state, toast) {
       state.toasts.push(toast);
@@ -62,11 +87,14 @@ export default createStore({
       }
     },
     logout({ commit }) {
-      commit("setUser", null);
+      commit("removeUser");
     },
     initializeUser({ commit }) {
       const user = JSON.parse(localStorage.getItem("user"));
-      commit("setUser", user);
+      console.log("userdata at init:", user);
+      if (user && user.token) {
+        commit("setUser", user);
+      }
     },
     addToast({ commit }, toast) {
       commit("ADD_TOAST", toast);

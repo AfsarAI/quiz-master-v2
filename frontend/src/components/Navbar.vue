@@ -52,11 +52,6 @@
                 >
               </li>
               <li class="nav-item">
-                <router-link to="/progress" class="nav-link"
-                  >Progress</router-link
-                >
-              </li>
-              <li class="nav-item">
                 <a
                   href="#"
                   @click.prevent="logout"
