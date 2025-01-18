@@ -25,6 +25,7 @@ user_fields = {
     "password": fields.String,
     "fullname": fields.String,
     "dob": fields.String,
+    "gender":fields.String,
     "qualification_id": fields.Integer,
     "profile_url": fields.String,
     "address": fields.String,
@@ -56,6 +57,14 @@ class UserResource(Resource):
         return users
     
 
+class UserByIDResource(Resource):
+    @marshal_with(user_fields)
+    @auth_required('token')
+    def get(self, user_id):
+        print(request.headers)  # Check headers
+        print(request.headers.get('Authentication-Token'))  # Token extraction check
+        user = User.query.get(user_id)
+        return user
 
 # Assuming user_datastore is defined in your app.py
 class UserRegisterResource(Resource):
@@ -266,7 +275,8 @@ class QualificationSubjectResource(Resource):
 
 
 
-api.add_resource(UserResource, '/users/data')
+api.add_resource(UserResource, 'all/users/data')
+api.add_resource(UserByIDResource, '/user/<int:user_id>/data', methods=['GET'])
 api.add_resource(UserRegisterResource, '/user/register', methods=['POST'])
 api.add_resource(UserLoginResource, '/user/login', methods=['POST'])
 api.add_resource(QualificationResource, '/qualifications')
