@@ -16,5 +16,8 @@
       "scripthost"
     ]
   },
-  "exclude": []
+  "exclude": [
+    "src/components/AdminDashboard.vue",
+    "src/components/UserDashboard.vue"
+  ]
 }

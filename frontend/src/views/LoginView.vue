@@ -1,101 +1,110 @@
 <template>
-  <div class="login-container" :data-bs-theme="isDarkMode ? 'dark' : 'light'">
-    <div class="container">
-      <div class="row justify-content-center align-items-center min-vh-100">
-        <div class="col-md-6">
-          <div class="card shadow-lg border-0">
-            <div class="card-body p-5">
-              <h2 class="text-center text-primary mb-4">
-                Access Your Dashboard
-              </h2>
+  <div>
+    <AppNavbar />
+    <div class="login-container" :data-bs-theme="isDarkMode ? 'dark' : 'light'">
+      <div class="container">
+        <div class="row justify-content-center align-items-center min-vh-100">
+          <div class="col-md-6">
+            <div class="card shadow-lg border-0">
+              <div class="card-body p-5">
+                <h2 class="text-center text-primary mb-4">
+                  Access Your Dashboard
+                </h2>
 
-              <div
-                v-if="alertMessage"
-                :class="`alert alert-${alertType} mt-3`"
-                role="alert"
-              >
-                {{ alertMessage }}
-              </div>
-              <h6 class="text-muted mt-2" v-if="alertMessage">
-                Please ensure your email and password are correct.
-              </h6>
-
-              <form @submit.prevent="login">
-                <div class="mb-3">
-                  <label for="email" class="form-label">Email:</label>
-                  <div class="input-group">
-                    <span class="input-group-text">
-                      <i class="bi bi-envelope"></i>
-                    </span>
-                    <input
-                      v-model="email"
-                      type="email"
-                      id="email"
-                      class="form-control"
-                      placeholder="Enter your email"
-                      required
-                    />
-                  </div>
+                <div
+                  v-if="alertMessage"
+                  :class="`alert alert-${alertType} mt-3`"
+                  role="alert"
+                >
+                  {{ alertMessage }}
                 </div>
-                <div class="mb-3">
-                  <label for="password" class="form-label">Password:</label>
-                  <div class="input-group">
-                    <span class="input-group-text">
-                      <i class="bi bi-lock"></i>
-                    </span>
-                    <input
-                      v-model="password"
-                      :type="showPassword ? 'text' : 'password'"
-                      id="password"
-                      class="form-control"
-                      placeholder="Enter your password"
-                      required
-                    />
+                <h6 class="text-muted mt-2" v-if="alertMessage">
+                  Please ensure your email and password are correct.
+                </h6>
+
+                <form @submit.prevent="login">
+                  <div class="mb-3">
+                    <label for="email" class="form-label">Email:</label>
+                    <div class="input-group">
+                      <span class="input-group-text">
+                        <i class="bi bi-envelope"></i>
+                      </span>
+                      <input
+                        v-model="email"
+                        type="email"
+                        id="email"
+                        class="form-control"
+                        placeholder="Enter your email"
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div class="mb-3">
+                    <label for="password" class="form-label">Password:</label>
+                    <div class="input-group">
+                      <span class="input-group-text">
+                        <i class="bi bi-lock"></i>
+                      </span>
+                      <input
+                        v-model="password"
+                        :type="showPassword ? 'text' : 'password'"
+                        id="password"
+                        class="form-control"
+                        placeholder="Enter your password"
+                        required
+                      />
+                      <button
+                        class="btn btn-outline-secondary"
+                        type="button"
+                        @click="togglePassword"
+                      >
+                        <i
+                          :class="
+                            showPassword ? 'bi bi-eye-slash' : 'bi bi-eye'
+                          "
+                        ></i>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="d-grid gap-2">
                     <button
-                      class="btn btn-outline-secondary"
-                      type="button"
-                      @click="togglePassword"
+                      type="submit"
+                      class="btn btn-primary btn-lg"
+                      :disabled="isLoading"
                     >
-                      <i
-                        :class="showPassword ? 'bi bi-eye-slash' : 'bi bi-eye'"
-                      ></i>
+                      <span
+                        v-if="isLoading"
+                        class="spinner-border spinner-border-sm me-2"
+                        role="status"
+                        aria-hidden="true"
+                      ></span>
+                      {{ isLoading ? "Logging in..." : "Login" }}
                     </button>
                   </div>
-                </div>
-                <div class="d-grid gap-2">
-                  <button
-                    type="submit"
-                    class="btn btn-primary btn-lg"
-                    :disabled="isLoading"
+                </form>
+                <p class="text-center mt-3">
+                  Don't have an account?
+                  <router-link
+                    to="/register"
+                    class="text-decoration-none fw-bold"
                   >
-                    <span
-                      v-if="isLoading"
-                      class="spinner-border spinner-border-sm me-2"
-                      role="status"
-                      aria-hidden="true"
-                    ></span>
-                    {{ isLoading ? "Logging in..." : "Login" }}
-                  </button>
-                </div>
-              </form>
-              <p class="text-center mt-3">
-                Don't have an account?
-                <router-link
-                  to="/register"
-                  class="text-decoration-none fw-bold"
-                >
-                  Register here
-                </router-link>
-              </p>
+                    Register here
+                  </router-link>
+                </p>
+              </div>
             </div>
           </div>
         </div>
       </div>
     </div>
+    <AppFooter />
   </div>
 </template>
 
 <script>
+import AppNavbar from "@/components/Navbar.vue";
+import AppFooter from "@/components/Footer.vue";
+
 import { ref } from "vue";
 import { useRouter } from "vue-router";
 import { useStore } from "vuex";
@@ -103,6 +112,10 @@ import { computed } from "vue";
 
 export default {
   name: "LoginPage",
+  components: {
+    AppNavbar,
+    AppFooter,
+  },
   setup() {
     const email = ref("");
     const password = ref("");

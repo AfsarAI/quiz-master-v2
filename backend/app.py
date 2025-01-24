@@ -18,7 +18,7 @@ def create_app():
 
     CORS(app, resources={r"/api/*": {"origins": "http://localhost:8080"}})
 
-    from resources import api
+    from api.setup_api import api
     api.init_app(app)
 
     return app
@@ -27,7 +27,7 @@ app = create_app()
 
 
 import initial_data
-import routes
+import base_route as routes
 
 #for try!
 if __name__ == '__main__':

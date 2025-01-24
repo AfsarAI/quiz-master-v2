@@ -6,10 +6,16 @@
           <h1 class="display-4 fw-bold mb-4">Welcome to Quiz Master!</h1>
           <p class="lead mb-4 typewriter" ref="typewriter"></p>
           <div class="d-flex gap-3">
-            <router-link to="/register" class="btn btn-primary btn-lg">
+            <router-link
+              :to="{ name: 'register' }"
+              class="btn btn-primary btn-lg"
+            >
               Get Started
             </router-link>
-            <router-link to="/about" class="btn btn-secondary btn-lg">
+            <router-link
+              :to="{ name: 'about' }"
+              class="btn btn-secondary btn-lg"
+            >
               Learn More
             </router-link>
           </div>

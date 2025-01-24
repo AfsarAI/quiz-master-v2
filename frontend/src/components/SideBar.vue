@@ -1,7 +1,11 @@
 <template>
   <aside class="sidebar" :class="{ collapsed: isSidebarCollapsed }">
     <div class="sidebar-header">
-      <h3 v-if="!isSidebarCollapsed" class="mb-0">App Dashboard</h3>
+      <h3 v-if="!isSidebarCollapsed" class="mb-0">
+        <router-link to="/quiz-master" class="navbar-brand fw-bold">
+          Quiz Master
+        </router-link>
+      </h3>
       <button @click="toggleSidebar" class="btn btn-link sidebar-toggle">
         <i
           class="bi"
@@ -23,12 +27,19 @@
         </li>
       </ul>
     </nav>
+    <div class="sidebar-footer">
+      <button @click="logout" class="btn btn-link nav-link w-100 text-start">
+        <i class="bi bi-box-arrow-right me-2"></i>
+        <span v-if="!isSidebarCollapsed">Logout</span>
+      </button>
+    </div>
   </aside>
 </template>
 
 <script>
 import { computed } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
+import { useStore } from "vuex";
 
 export default {
   name: "SideBar",
@@ -45,10 +56,12 @@ export default {
   emits: ["toggle-sidebar"],
   setup(props, { emit }) {
     const route = useRoute();
+    const router = useRouter();
+    const store = useStore();
 
     const basePath = computed(() => {
       const parts = route.path.split("/");
-      return parts.slice(0, 3).join("/"); // Adjusts to `admin/1` dynamically
+      return parts.slice(0, 4).join("/");
     });
 
     const menuItems = computed(() => [
@@ -79,7 +92,13 @@ export default {
       {
         text: "Quizzes",
         route: "dashboard/quizzes",
-        roles: ["admin", "user"],
+        roles: ["admin"],
+        icon: "bi bi-question-circle",
+      },
+      {
+        text: "Quiz",
+        route: "dashboard/quiz",
+        roles: ["user"],
         icon: "bi bi-question-circle",
       },
       {
@@ -105,11 +124,19 @@ export default {
 
     const fullPath = (route) => `${basePath.value}/${route}`;
 
+    const logout = () => {
+      if (confirm("Are you sure you want to logout?")) {
+        store.dispatch("logout");
+        router.push({ name: "login" });
+      }
+    };
+
     return {
       filteredMenuItems,
       toggleSidebar,
       isActive,
       fullPath,
+      logout,
     };
   },
 };
@@ -121,6 +148,14 @@ export default {
   background-color: #ffffff;
   box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
   transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1000;
+  overflow-y: auto;
 }
 
 [data-bs-theme="dark"] .sidebar {
@@ -147,6 +182,7 @@ export default {
 
 .sidebar-nav {
   padding: 1rem 0;
+  flex-grow: 1;
 }
 
 .sidebar-nav .nav-link {
@@ -181,5 +217,14 @@ export default {
 .sidebar-nav .nav-link i {
   margin-right: 0.5rem;
   font-size: 1.2rem;
+}
+
+.sidebar-footer {
+  padding: 1rem;
+  border-top: 1px solid #e9ecef;
+}
+
+[data-bs-theme="dark"] .sidebar-footer {
+  border-top-color: #2c3e50;
 }
 </style>

@@ -34,12 +34,18 @@
           </li>
           <template v-if="!isLoggedIn">
             <li class="nav-item">
-              <router-link to="/register" class="btn btn-outline-primary ms-2">
+              <router-link
+                :to="{ name: 'register' }"
+                class="btn btn-outline-primary ms-2"
+              >
                 Register
               </router-link>
             </li>
             <li class="nav-item">
-              <router-link to="/login" class="btn btn-outline-primary ms-2">
+              <router-link
+                :to="{ name: 'login' }"
+                class="btn btn-outline-primary ms-2"
+              >
                 Login
               </router-link>
             </li>
@@ -47,8 +53,13 @@
           <template v-else>
             <template v-if="isDashboardPage">
               <li class="nav-item">
-                <router-link :to="dashboardLink" class="nav-link"
+                <router-link :to="dashboardLink" class="nav-link" exact
                   >Dashboard</router-link
+                >
+              </li>
+              <li class="nav-item">
+                <router-link :to="ProfileLink" class="nav-link" exact
+                  >Profile</router-link
                 >
               </li>
               <li class="nav-item">
@@ -63,17 +74,17 @@
             </template>
             <template v-else>
               <li class="nav-item">
-                <router-link :to="dashboardLink" class="nav-link"
+                <router-link :to="dashboardLink" class="nav-link" exact
                   >Dashboard</router-link
+                >
+              </li>
+              <li class="nav-item">
+                <router-link :to="ProfileLink" class="nav-link" exact
+                  >Profile</router-link
                 >
               </li>
             </template>
           </template>
-          <li class="nav-item ms-2">
-            <button @click="toggleDarkMode" class="btn btn-outline-secondary">
-              {{ isDarkMode ? "Light" : "Dark" }} Mode
-            </button>
-          </li>
         </ul>
       </div>
     </div>
@@ -98,7 +109,11 @@ export default {
     const userId = computed(() => store.state.user.id);
 
     const dashboardLink = computed(() => {
-      return `/${userRole.value}/${userId.value}/dashboard`;
+      return `quiz-master/${userRole.value}/${userId.value}/dashboard`;
+    });
+
+    const ProfileLink = computed(() => {
+      return `/${userRole.value}/${userId.value}/dashboard/profile`;
     });
 
     // Compute if the current route is a dashboard page
@@ -138,6 +153,7 @@ export default {
       isLoggedIn,
       userRole,
       dashboardLink,
+      ProfileLink,
       isDashboardPage,
       toggleDarkMode,
       logout,

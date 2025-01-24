@@ -1,32 +1,38 @@
 <template>
-  <div class="home-page">
-    <HeroSection />
+  <div>
+    <AppNavbar />
+    <div class="home-page">
+      <HeroSection />
 
-    <animated-section>
-      <FeaturesSection />
-    </animated-section>
+      <AnimatedSection>
+        <FeaturesSection />
+      </AnimatedSection>
 
-    <animated-section>
-      <PopularQuizzesSection />
-    </animated-section>
+      <AnimatedSection>
+        <PopularQuizzesSection />
+      </AnimatedSection>
 
-    <animated-section>
-      <QualificationSection />
-    </animated-section>
+      <AnimatedSection>
+        <QualificationSection />
+      </AnimatedSection>
 
-    <animated-section>
-      <CtaSection />
-    </animated-section>
+      <AnimatedSection>
+        <CtaSection />
+      </AnimatedSection>
+    </div>
+    <Footer />
   </div>
 </template>
 
 <script setup>
+import AppNavbar from "@/components/Navbar.vue";
 import AnimatedSection from "@/components/AnimatedSection.vue";
 import HeroSection from "@/components/HomePage/HeroSection.vue";
 import FeaturesSection from "@/components/HomePage/FeaturesSection.vue";
 import PopularQuizzesSection from "@/components/HomePage/PopularQuizzesSection.vue";
 import QualificationSection from "@/components/HomePage/QualificationSection.vue";
 import CtaSection from "@/components/HomePage/CtaSection.vue";
+import Footer from "@/components/Footer.vue";
 </script>
 
 <style scoped>
@@ -38,7 +44,4 @@ import CtaSection from "@/components/HomePage/CtaSection.vue";
   padding: 0;
   color: #212529;
 }
-
-/* Remove the background gradient from here */
-/* Individual sections will handle their own backgrounds */
 </style>

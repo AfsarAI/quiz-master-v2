@@ -8,12 +8,12 @@
       :role="role"
       @toggle-sidebar="toggleSidebar"
     />
-    <main class="main-content">
-      <DashboardHeader />
-      <div class="dashboard-content">
-        <component :is="currentDashboard" />
+    <div class="main-content">
+      <div class="dashboard-header-wrapper">
+        <DashboardHeader />
       </div>
-    </main>
+      <router-view />
+    </div>
   </div>
 </template>
 
@@ -22,16 +22,12 @@ import { ref, computed } from "vue";
 import { useRoute } from "vue-router";
 import SideBar from "@/components/SideBar.vue";
 import DashboardHeader from "@/components/DashboardHeader.vue";
-import UserDashboard from "@/components/UserDashboard.vue";
-import AdminDashboard from "@/components/AdminDashboard.vue";
 
 export default {
   name: "DashboardView",
   components: {
     SideBar,
     DashboardHeader,
-    UserDashboard,
-    AdminDashboard,
   },
   setup() {
     const route = useRoute();
@@ -43,14 +39,9 @@ export default {
 
     const role = computed(() => route.params.role);
 
-    const currentDashboard = computed(() => {
-      return role.value === "admin" ? AdminDashboard : UserDashboard;
-    });
-
     return {
       isSidebarCollapsed,
       toggleSidebar,
-      currentDashboard,
       role,
     };
   },
@@ -65,8 +56,29 @@ export default {
 
 .main-content {
   flex: 1;
-  padding: 2rem;
+  margin-left: 250px;
   transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.sidebar-collapsed .main-content {
+  margin-left: 60px;
+}
+
+.dashboard-header-wrapper {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  background-color: var(--bs-body-bg);
+  background-color: transparent;
+}
+
+.dashboard-content {
+  flex: 1;
+  padding: 2rem;
 }
 
 @media (max-width: 768px) {
@@ -75,7 +87,11 @@ export default {
   }
 
   .main-content {
-    padding: 1rem;
+    margin-left: 0;
+  }
+
+  .sidebar-collapsed .main-content {
+    margin-left: 0;
   }
 }
 </style>

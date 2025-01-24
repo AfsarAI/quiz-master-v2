@@ -1,8 +1,8 @@
 <template>
   <div id="app" :data-bs-theme="isDarkMode ? 'dark' : 'light'">
-    <AppNavbar />
-    <router-view />
-    <AppFooter />
+    <div>
+      <router-view />
+    </div>
     <DarkModeToggle />
     <ToastNotifications ref="toast" />
   </div>
@@ -11,8 +11,7 @@
 <script setup>
 import { computed, watch, onMounted } from "vue";
 import { useStore } from "vuex";
-import AppNavbar from "@/components/Navbar.vue";
-import AppFooter from "@/components/Footer.vue";
+
 import DarkModeToggle from "@/components/DarkModeToggle.vue";
 import ToastNotifications from "@/components/ToastNotifications.vue";
 
@@ -57,13 +56,17 @@ watch(isDarkMode, (newVal) => {
 
 /* Light Mode */
 [data-bs-theme="light"] {
-  background-color: #ffffff; /* Light mode body background */
-  color: #333; /* Dark text color */
+  background-color: #ffffff;
+  /* Light mode body background */
+  color: #333;
+  /* Dark text color */
 }
 
 /* Dark Mode */
 [data-bs-theme="dark"] {
-  background-color: #121212; /* Dark mode body background */
-  color: #f1f1f1; /* Light text color */
+  background-color: #121212;
+  /* Dark mode body background */
+  color: #f1f1f1;
+  /* Light text color */
 }
 </style>
