@@ -30,7 +30,9 @@
       <div class="collapse navbar-collapse" id="navbarNav">
         <ul class="navbar-nav ms-auto align-items-center">
           <li class="nav-item">
-            <router-link to="/" class="nav-link" exact>Home</router-link>
+            <router-link :to="{ name: 'home' }" class="nav-link" exact
+              >Home</router-link
+            >
           </li>
           <template v-if="!isLoggedIn">
             <li class="nav-item">

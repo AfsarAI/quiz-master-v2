@@ -37,3 +37,11 @@ qual_fields = {
     "subjects": fields.List(fields.String),
     "users": fields.List(fields.String)
 }
+
+
+activity_fields = {
+            'id': fields.Integer,
+            'user': fields.String,
+            'action': fields.String,
+            'timestamp': fields.DateTime
+        }

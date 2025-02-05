@@ -25,73 +25,77 @@
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- Recent Activity Section -->
-    <div class="row g-4">
-      <div class="col-md-6">
-        <div class="card h-100">
-          <div class="card-header bg-primary text-white">
-            <h5 class="mb-0">Recent Activity</h5>
-          </div>
-          <div class="card-body">
-            <ul class="list-group list-group-flush">
-              <li
-                v-for="activity in recentActivity"
-                :key="activity.id"
-                class="list-group-item"
+      <!-- Recent Activity Section -->
+      <div class="row g-4">
+        <div class="col-md-6">
+          <div class="card h-100">
+            <div class="card-header bg-primary text-white">
+              <h5 class="mb-0">Recent Activity</h5>
+            </div>
+            <div class="card-body">
+              <ul
+                v-if="recentActivity && recentActivity.length > 0"
+                class="list-group list-group-flush"
               >
-                <div class="d-flex w-100 justify-content-between">
-                  <h6 class="mb-1">{{ activity.action }}</h6>
-                  <small>{{ activity.time }}</small>
-                </div>
-                <p class="mb-1">{{ activity.details }}</p>
-                <small>{{ activity.user }}</small>
-              </li>
-            </ul>
+                <li
+                  v-for="activity in recentActivity"
+                  :key="activity.id"
+                  class="list-group-item"
+                >
+                  <div class="d-flex w-100 justify-content-between">
+                    <h6 class="mb-1">{{ activity.action }}</h6>
+                    <small>{{ activity.time }}</small>
+                  </div>
+                  <p class="mb-1">{{ activity.details }}</p>
+                  <small>{{ activity.user }}</small>
+                </li>
+              </ul>
+              <p v-else class="text-center">No activity this week.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Top Performing Quizzes Section -->
+        <div class="col-md-6">
+          <div class="card h-100">
+            <div class="card-header bg-success text-white">
+              <h5 class="mb-0">Top Performing Quizzes</h5>
+            </div>
+            <div class="card-body">
+              <table class="table table-hover">
+                <thead>
+                  <tr>
+                    <th>Quiz Title</th>
+                    <th>Category</th>
+                    <th>Avg. Score</th>
+                    <th>Attempts</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="quiz in topQuizzes" :key="quiz.id">
+                    <td>{{ quiz.title }}</td>
+                    <td>{{ quiz.category }}</td>
+                    <td>{{ quiz.avgScore }}%</td>
+                    <td>{{ quiz.attempts }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- Top Performing Quizzes Section -->
-      <div class="col-md-6">
-        <div class="card h-100">
-          <div class="card-header bg-success text-white">
-            <h5 class="mb-0">Top Performing Quizzes</h5>
-          </div>
-          <div class="card-body">
-            <table class="table table-hover">
-              <thead>
-                <tr>
-                  <th>Quiz Title</th>
-                  <th>Category</th>
-                  <th>Avg. Score</th>
-                  <th>Attempts</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="quiz in topQuizzes" :key="quiz.id">
-                  <td>{{ quiz.title }}</td>
-                  <td>{{ quiz.category }}</td>
-                  <td>{{ quiz.avgScore }}%</td>
-                  <td>{{ quiz.attempts }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- User Engagement Chart -->
-    <div class="row mt-4">
-      <div class="col-12">
-        <div class="card">
-          <div class="card-header bg-info text-white">
-            <h5 class="mb-0">User Engagement</h5>
-          </div>
-          <div class="card-body">
-            <canvas id="userEngagementChart"></canvas>
+      <!-- User Engagement Chart -->
+      <div class="row mt-4">
+        <div class="col-12">
+          <div class="card">
+            <div class="card-header bg-info text-white">
+              <h5 class="mb-0">User Engagement</h5>
+            </div>
+            <div class="card-body">
+              <canvas id="userEngagementChart"></canvas>
+            </div>
           </div>
         </div>
       </div>
@@ -133,10 +137,11 @@ const fetchStats = async () => {
 const fetchRecentActivity = async () => {
   try {
     const response = await fetch(
-      "http://127.0.0.1:5000/api/dashboard/recent-activity"
+      "http://127.0.0.1:5000/api/dashboard/get/recent-activity/data"
     );
     const data = await response.json();
-    recentActivity.value = data.activities;
+    // Check if activities exist, otherwise set an empty array
+    recentActivity.value = data.activities || [];
   } catch (error) {
     console.error("Error fetching recent activity:", error);
   }

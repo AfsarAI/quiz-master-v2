@@ -1,5 +1,7 @@
 # routes/__init__.py
 from flask_restful import Api
+
+from .admin_api import AdminStatsResource, AllRecentActivityResource, RecentActivityResource
 from .auth_api import UserResource, UserByIDResource, UserRegisterResource, UserLoginResource
 from .subject_api import SubjectResource, SubjectsWithQualificationResource
 from .qual_api import QualificationResource, QualificationSubjectResource
@@ -20,3 +22,8 @@ api.add_resource(SubjectsWithQualificationResource, '/qualifications/<int:qualif
 #qual routes
 api.add_resource(QualificationResource, '/qualifications')
 api.add_resource(QualificationSubjectResource, '/create/qualification-subjects')
+
+#Admin Dash
+api.add_resource(AdminStatsResource, '/dashboard/stats')
+api.add_resource(AllRecentActivityResource, '/dashboard/get/recent-activity/data', methods=['GET'])
+api.add_resource(RecentActivityResource, '/dashboard/post/recent-activity/data', methods=['POST'])

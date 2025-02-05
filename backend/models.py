@@ -18,6 +18,7 @@ class User(db.Model, UserMixin):
     phone = db.Column(db.String)
     fs_uniquifier = db.Column(db.String(255), unique=True, nullable=False)
     active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.now, nullable=False)
 
     # Relationships
     roles = db.relationship('Role', secondary='user_roles', backref=db.backref('users', lazy='dynamic'))
@@ -126,3 +127,11 @@ class Score(db.Model):
     quiz_id = db.Column(db.Integer, db.ForeignKey('quiz.id'), nullable=False)
     score = db.Column(db.Float, nullable=False)
     attempt_date = db.Column(db.DateTime, default=datetime.now, nullable=False)
+    active = db.Column(db.Boolean, default=True)
+
+# Extra
+class RecentActivity(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user = db.Column(db.String(100), nullable=False)
+    action = db.Column(db.String(255), nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.now)
