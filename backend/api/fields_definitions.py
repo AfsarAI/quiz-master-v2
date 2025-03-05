@@ -8,6 +8,29 @@ subjects_fields = {
     "qualification_id": fields.Integer
 }
 
+
+quizzes_fields = {
+    "id": fields.Integer,
+    "title": fields.String,
+    "description": fields.String,
+    "quiz_type": fields.String,
+    "subject_id": fields.Integer,
+    "chapter_id": fields.Integer,
+    "date_created": fields.DateTime,
+    "duration": fields.Integer,
+    "questions": fields.List(fields.String)
+}
+
+
+score_fields = {
+    "id": fields.Integer,
+    "user_id": fields.Integer,
+    "quiz_id": fields.Integer,
+    "score": fields.Float,
+    "attempt_date": fields.DateTime,
+    "active": fields.Boolean
+}
+
 user_fields = {
     "id": fields.Integer,
     "email": fields.String,
@@ -25,8 +48,8 @@ user_fields = {
         "description": fields.String
     })),
     "subjects": fields.List(fields.Nested(subjects_fields)),
-    "quizzes": fields.List(fields.String),
-    "scores": fields.List(fields.String),
+    "quizzes": fields.List(fields.Nested(quizzes_fields)),
+    "scores": fields.List(fields.Nested(score_fields)),
 }
 
 

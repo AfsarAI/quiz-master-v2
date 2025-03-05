@@ -1,11 +1,11 @@
 from flask import jsonify, request
 from flask_restful import Resource, marshal_with
-from models import RecentActivity, User, Score
+from models import Chapter, Qualification, Quiz, RecentActivity, Subject, User, Score
 from datetime import datetime, timedelta
 from sqlalchemy import func
 
 from models import db, User, Score
-from .fields_definitions import activity_fields
+from .fields_definitions import activity_fields, qual_fields, score_fields, subjects_fields
 
 
 
@@ -50,4 +50,67 @@ class RecentActivityResource(Resource):
         db.session.commit()
         return jsonify({"message": "Activity logged successfully!"}), 201
 
+class TopScorersResource(Resource):
+    @marshal_with(score_fields)
+    def get(self):
+        top_scorers = db.session.query(Score).order_by(Score.score.desc()).limit(5).all()
+        return top_scorers
 
+class AllQualificationsResource(Resource):
+    @marshal_with(qual_fields)
+    def get(self):
+        classes = Qualification.query.all()
+        return classes
+    
+class AllSubjectsResource(Resource):
+    @marshal_with(subjects_fields)
+    def get(self):
+        subjects = Subject.query.all()
+        return subjects
+
+
+# adding class, subject, chapter
+class AddQualificationResource(Resource):
+    def post(self):
+        data = request.get_json()
+        new_qual = Qualification(name=data['name'], description=data.get('description', ''))
+        db.session.add(new_qual)
+        db.session.commit()
+        return {'message': 'Qualification added successfully!'}, 201
+    
+class AddSubjectResource(Resource):
+    def post(self):
+        data = request.get_json()
+        print(data)
+        new_subject = Subject(name=data['name'], description=data.get('description', ''), qualification_id=data['qualId'])
+        db.session.add(new_subject)
+        db.session.commit()
+        return {'message': 'Subject added successfully!'}, 201
+
+class AddChapterResource(Resource):
+    def post(self):
+        data = request.get_json()
+        new_chapter = Chapter(name=data['name'], description=data.get('description', ''), subject_id=data['subjectId'])
+        db.session.add(new_chapter)
+        db.session.commit()
+        return {'message': 'Chapter added successfully!'}, 201
+
+
+# All things!
+class AllUsersResource(Resource):
+    @marshal_with(qual_fields)
+    def get(self):
+        users = User.query.all()
+        return users
+
+class AllScoresResource(Resource):
+    @marshal_with(score_fields)
+    def get(self):
+        scores = Score.query.all()
+        return scores
+
+class AllQuizzesResource(Resource):
+    @marshal_with(score_fields)
+    def get(self):
+        quizzes = Quiz.query.all()
+        return quizzes

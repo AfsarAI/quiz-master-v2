@@ -24,14 +24,14 @@
           <div class="card-body">
             <ul class="list-group list-group-flush">
               <li
-                v-for="cls in classes"
-                :key="cls.id"
+                v-for="qual in Qualifications"
+                :key="qual.id"
                 class="list-group-item d-flex justify-content-between align-items-center"
               >
-                {{ cls.name }}
-                <span class="badge bg-primary rounded-pill"
-                  >{{ cls.subjectsCount }} subjects</span
-                >
+                {{ qual.name }}
+                <span class="badge bg-primary rounded-pill">
+                  {{ qual.subjects?.length || 0 }} subjects
+                </span>
               </li>
             </ul>
           </div>
@@ -45,14 +45,15 @@
           <div class="card-body">
             <ul class="list-group list-group-flush">
               <li
-                v-for="subject in subjects"
-                :key="subject.id"
+                v-for="sub in Subjects"
+                :key="sub.id"
                 class="list-group-item d-flex justify-content-between align-items-center"
+                index="subject.id"
               >
-                {{ subject.name }}
-                <span class="badge bg-success rounded-pill"
-                  >{{ subject.chaptersCount }} chapters</span
-                >
+                {{ sub.name }}
+                <span class="badge bg-success rounded-pill">
+                  {{ sub.chapters?.length || 0 }} chapters
+                </span>
               </li>
             </ul>
           </div>
@@ -60,40 +61,83 @@
       </div>
     </div>
 
-    <!-- Modal for forms -->
-    <div
-      class="modal fade"
-      id="formModal"
-      tabindex="-1"
-      aria-labelledby="formModalLabel"
-      aria-hidden="true"
-    >
+    <!-- Modal for Forms -->
+    <div class="modal fade" id="formModal" tabindex="-1" aria-hidden="true">
       <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title" id="formModalLabel">
-              {{ currentForm.title }}
-            </h5>
+            <h5 class="modal-title">{{ currentForm.title }}</h5>
             <button
               type="button"
               class="btn-close"
               data-bs-dismiss="modal"
-              aria-label="Close"
             ></button>
           </div>
           <div class="modal-body">
             <form @submit.prevent="submitForm">
-              <div class="mb-3">
-                <label :for="currentForm.type" class="form-label">{{
-                  currentForm.label
-                }}</label>
+              <div class="mb-3" v-if="currentForm.type === 'qualification'">
+                <label class="form-label">Qualification Name</label>
                 <input
-                  :type="currentForm.inputType"
+                  type="text"
                   class="form-control"
-                  :id="currentForm.type"
-                  v-model="formData[currentForm.type]"
+                  v-model="formData.name"
                   required
                 />
+                <label class="form-label">Description</label>
+                <textarea
+                  type="text"
+                  class="form-control"
+                  v-model="formData.description"
+                  required
+                ></textarea>
+              </div>
+              <div class="mb-3" v-if="currentForm.type === 'subject'">
+                <label class="form-label mt-2">Select Qualification</label>
+                <select class="form-control" v-model="formData.qualId">
+                  <option
+                    v-for="qual in Qualifications"
+                    :key="qual.id"
+                    :value="qual.id"
+                  >
+                    {{ qual.name }}
+                  </option>
+                </select>
+                <label class="form-label">Subject Name</label>
+                <input
+                  type="text"
+                  class="form-control"
+                  v-model="formData.name"
+                  required
+                />
+                <label class="form-label">Description</label>
+                <textarea
+                  type="text"
+                  class="form-control"
+                  v-model="formData.description"
+                  required
+                ></textarea>
+              </div>
+              <div class="mb-3" v-if="currentForm.type === 'chapter'">
+                <label class="form-label mt-2">Select Subject</label>
+                <select class="form-control" v-model="formData.subjectId">
+                  <option v-for="sub in Subjects" :key="sub.id" :value="sub.id">
+                    {{ sub.name }}
+                  </option>
+                </select>
+                <label class="form-label">Chapater Name</label>
+                <input
+                  type="text"
+                  class="form-control"
+                  v-model="formData.name"
+                  required
+                />
+                <label class="form-label">Description</label>
+                <textarea
+                  type="text"
+                  class="form-control"
+                  v-model="formData.description"
+                  required
+                ></textarea>
               </div>
               <button type="submit" class="btn btn-primary">Submit</button>
             </form>
@@ -105,85 +149,107 @@
 </template>
 
 <script setup>
-import { ref, reactive } from "vue";
+import { ref, reactive, onMounted } from "vue";
 import { Modal } from "bootstrap";
+
+const apiBase = "http://127.0.0.1:5000/api/dashboard";
 
 const actions = [
   {
-    type: "class",
-    label: "Add Class / Qualification",
+    type: "qualification",
+    label: "Add Qualification",
     icon: "bi bi-mortarboard",
   },
   { type: "subject", label: "Add Subject", icon: "bi bi-book" },
-  { type: "chapter", label: "Add Chapter", icon: "bi bi-file-text" },
+  { type: "chapter", label: "Add Chapater", icon: "bi bi-file-text" },
   { type: "quiz", label: "Manage Quizzes", icon: "bi bi-question-circle" },
 ];
 
-const classes = ref([
-  { id: 1, name: "Class 10", subjectsCount: 5 },
-  { id: 2, name: "Class 11", subjectsCount: 6 },
-  { id: 3, name: "Class 12", subjectsCount: 6 },
-]);
-
-const subjects = ref([
-  { id: 1, name: "Mathematics", chaptersCount: 10 },
-  { id: 2, name: "Physics", chaptersCount: 8 },
-  { id: 3, name: "Chemistry", chaptersCount: 9 },
-]);
-
-const currentForm = reactive({
-  type: "",
-  title: "",
-  label: "",
-  inputType: "text",
-});
-
+const Qualifications = ref([]);
+const Subjects = ref([]);
+const currentForm = reactive({ type: "", title: "" });
 const formData = reactive({
-  class: "",
-  subject: "",
-  chapter: "",
+  name: "",
+  description: "",
+  qualId: null,
+  subjectId: null,
 });
-
 let formModal;
+const fetchData = async () => {
+  try {
+    const [qualRes, subjectRes] = await Promise.all([
+      fetch(`${apiBase}/all/qualifications`).then((res) => res.json()),
+      fetch(`${apiBase}/all/subjects`).then((res) => res.json()),
+    ]);
+    Qualifications.value = qualRes;
+    Subjects.value = subjectRes;
+  } catch (error) {
+    console.error("Error fetching data:", error);
+  }
+};
 
 const openForm = (type) => {
   if (type === "quiz") {
-    // Navigate to quiz management page
-    console.log("Navigating to quiz management page");
+    console.log("Navigating to quiz page");
     return;
   }
-
   currentForm.type = type;
   currentForm.title = `Add New ${type.charAt(0).toUpperCase() + type.slice(1)}`;
-  currentForm.label = `${type.charAt(0).toUpperCase() + type.slice(1)} Name`;
-
+  formData.name = "";
+  formData.classId = null;
   if (!formModal) {
     formModal = new Modal(document.getElementById("formModal"));
   }
   formModal.show();
 };
+const submitForm = async () => {
+  try {
+    let endpoint = "";
+    let payload = {};
 
-const submitForm = () => {
-  console.log(`Submitting ${currentForm.type}:`, formData[currentForm.type]);
-  // Here you would typically make an API call to save the data
-  // For demonstration, we'll just add it to the local array
-  if (currentForm.type === "class") {
-    classes.value.push({
-      id: classes.value.length + 1,
-      name: formData[currentForm.type],
-      subjectsCount: 0,
+    if (currentForm.type === "qualification") {
+      endpoint = "add/qualification"; // API: /api/dashboard/classes
+      payload = {
+        name: formData.name,
+        description: formData.description,
+      };
+    } else if (currentForm.type === "subject") {
+      endpoint = "add/subject"; // API: /api/dashboard/subjects
+      payload = {
+        name: formData.name,
+        description: formData.description,
+        qualId: formData.qualId,
+      };
+    } else if (currentForm.type === "chapter") {
+      endpoint = "add/chapter"; // API: /api/dashboard/chapters
+      payload = {
+        name: formData.name,
+        description: formData.description,
+        subjectId: formData.subjectId, // yeh 'classId' nahi 'subjectId' hoga
+      };
+    }
+
+    // API request send karna
+    const response = await fetch(`${apiBase}/${endpoint}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
     });
-  } else if (currentForm.type === "subject") {
-    subjects.value.push({
-      id: subjects.value.length + 1,
-      name: formData[currentForm.type],
-      chaptersCount: 0,
-    });
+
+    if (!response.ok) {
+      throw new Error("Network response was not ok");
+    }
+    // Data refresh karna
+    await fetchData();
+    formModal.hide();
+  } catch (error) {
+    console.error("Error adding data:", error);
   }
-
-  formData[currentForm.type] = ""; // Clear the form
-  formModal.hide();
 };
+
+onMounted(fetchData);
 </script>
 
 <style scoped>

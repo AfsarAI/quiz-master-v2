@@ -25,77 +25,84 @@
           </div>
         </div>
       </div>
+    </div>
 
+    <!-- Recent Activity & Top Quizzes -->
+    <div class="row g-4">
       <!-- Recent Activity Section -->
-      <div class="row g-4">
-        <div class="col-md-6">
-          <div class="card h-100">
-            <div class="card-header bg-primary text-white">
-              <h5 class="mb-0">Recent Activity</h5>
-            </div>
-            <div class="card-body">
-              <ul
-                v-if="recentActivity && recentActivity.length > 0"
-                class="list-group list-group-flush"
-              >
-                <li
-                  v-for="activity in recentActivity"
-                  :key="activity.id"
-                  class="list-group-item"
-                >
-                  <div class="d-flex w-100 justify-content-between">
-                    <h6 class="mb-1">{{ activity.action }}</h6>
-                    <small>{{ activity.time }}</small>
-                  </div>
-                  <p class="mb-1">{{ activity.details }}</p>
-                  <small>{{ activity.user }}</small>
-                </li>
-              </ul>
-              <p v-else class="text-center">No activity this week.</p>
-            </div>
+      <div class="col-md-6">
+        <div class="card h-100">
+          <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">Recent Activity</h5>
           </div>
-        </div>
-
-        <!-- Top Performing Quizzes Section -->
-        <div class="col-md-6">
-          <div class="card h-100">
-            <div class="card-header bg-success text-white">
-              <h5 class="mb-0">Top Performing Quizzes</h5>
-            </div>
-            <div class="card-body">
-              <table class="table table-hover">
-                <thead>
-                  <tr>
-                    <th>Quiz Title</th>
-                    <th>Category</th>
-                    <th>Avg. Score</th>
-                    <th>Attempts</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="quiz in topQuizzes" :key="quiz.id">
-                    <td>{{ quiz.title }}</td>
-                    <td>{{ quiz.category }}</td>
-                    <td>{{ quiz.avgScore }}%</td>
-                    <td>{{ quiz.attempts }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+          <div class="card-body">
+            <ul
+              v-if="recentActivity.length > 0"
+              class="list-group list-group-flush"
+            >
+              <li
+                v-for="activity in recentActivity"
+                :key="activity.id"
+                class="list-group-item"
+              >
+                <div class="d-flex w-100 justify-content-between">
+                  <h6 class="mb-1">{{ activity.action }}</h6>
+                  <small>{{ activity.time }}</small>
+                </div>
+                <p class="mb-1">{{ activity.details }}</p>
+                <small>{{ activity.user }}</small>
+              </li>
+            </ul>
+            <p v-else class="text-center text-muted">No activity this week.</p>
           </div>
         </div>
       </div>
 
-      <!-- User Engagement Chart -->
-      <div class="row mt-4">
-        <div class="col-12">
-          <div class="card">
-            <div class="card-header bg-info text-white">
-              <h5 class="mb-0">User Engagement</h5>
-            </div>
-            <div class="card-body">
-              <canvas id="userEngagementChart"></canvas>
-            </div>
+      <!-- Top Performing Quizzes Section -->
+      <div class="col-md-6">
+        <div class="card h-100">
+          <div class="card-header bg-success text-white">
+            <h5 class="mb-0">Top Performing Quizzes</h5>
+          </div>
+          <div class="card-body">
+            <p v-if="topScorers.length === 0" class="text-center text-muted">
+              No quizzes taken yet.
+            </p>
+            <table v-else class="table table-hover">
+              <thead>
+                <tr>
+                  <th>User Name</th>
+                  <th>Category</th>
+                  <th>Score</th>
+                  <th>Attempt Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="scorer in topScorers"
+                  :key="scorer.user + scorer.quiz_type"
+                >
+                  <td>{{ scorer.user }}</td>
+                  <td>{{ scorer.quiz_type }}</td>
+                  <td>{{ scorer.score }}%</td>
+                  <td>{{ scorer.attempt_date }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- User Engagement Chart -->
+    <div class="row mt-4">
+      <div class="col-12">
+        <div class="card">
+          <div class="card-header bg-info text-white">
+            <h5 class="mb-0">User Engagement</h5>
+          </div>
+          <div class="card-body">
+            <canvas id="userEngagementChart"></canvas>
           </div>
         </div>
       </div>
@@ -111,7 +118,7 @@ import Chart from "chart.js/auto";
 // Reactive variables for dynamic data
 const stats = ref([]);
 const recentActivity = ref([]);
-const topQuizzes = ref([]);
+const topScorers = ref([]);
 
 // Fetch Stats with Trend Calculation
 const fetchStats = async () => {
@@ -148,13 +155,13 @@ const fetchRecentActivity = async () => {
 };
 
 // Fetch Top Performing Quizzes
-const fetchTopQuizzes = async () => {
+const fetchTopScorers = async () => {
   try {
     const response = await fetch(
-      "http://127.0.0.1:5000/api/dashboard/top-quizzes"
+      "http://127.0.0.1:5000/api/dashboard/top-scorers"
     );
     const data = await response.json();
-    topQuizzes.value = data.quizzes;
+    topScorers.value = data.top_scorers || [];
   } catch (error) {
     console.error("Error fetching top quizzes:", error);
   }
@@ -210,7 +217,7 @@ const initUserEngagementChart = async () => {
 onMounted(() => {
   fetchStats();
   fetchRecentActivity();
-  fetchTopQuizzes();
+  fetchTopScorers();
   initUserEngagementChart();
 });
 </script>
