@@ -23,7 +23,6 @@ class User(db.Model, UserMixin):
     # Relationships
     roles = db.relationship('Role', secondary='user_roles', backref=db.backref('users', lazy='dynamic'))
     subjects = db.relationship('Subject', secondary='user_subjects', backref=db.backref('users', lazy='dynamic'))
-    quizzes = db.relationship('Quiz', secondary='user_quizzes', backref=db.backref('users', lazy='dynamic'))
     scores = db.relationship('Score', backref='user', lazy=True)
 
 
@@ -132,6 +131,6 @@ class Score(db.Model):
 # Extra
 class RecentActivity(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user = db.Column(db.String(100), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     action = db.Column(db.String(255), nullable=False)
     timestamp = db.Column(db.DateTime, default=datetime.now)

@@ -28,7 +28,7 @@
             <thead>
               <tr>
                 <th>Title</th>
-                <th>Category</th>
+                <th>Quiz Type</th>
                 <th>Questions</th>
                 <th>Date Created</th>
                 <th>Actions</th>
@@ -37,8 +37,8 @@
             <tbody>
               <tr v-for="quiz in filteredQuizzes" :key="quiz.id">
                 <td>{{ quiz.title }}</td>
-                <td>{{ quiz.category }}</td>
-                <td>{{ quiz.questionCount }}</td>
+                <td>{{ quiz.quiz_type }}</td>
+                <td>{{ quiz.questions?.length || 0 }}</td>
                 <td>{{ quiz.dateCreated }}</td>
                 <td>
                   <button
@@ -95,19 +95,60 @@
                 />
               </div>
               <div class="mb-3">
-                <label for="quizCategory" class="form-label">Category</label>
+                <label for="quizType" class="form-label">Quiz Type</label>
                 <select
                   class="form-select"
-                  id="quizCategory"
-                  v-model="quizForm.category"
+                  id="quizType"
+                  v-model="quizForm.quizType"
                   required
                 >
-                  <option value="">Select a category</option>
-                  <option value="Mathematics">Mathematics</option>
-                  <option value="Science">Science</option>
-                  <option value="History">History</option>
-                  <option value="Literature">Literature</option>
-                  <option value="Geography">Geography</option>
+                  <option value="" disabled hidden>Select a Quiz Type</option>
+                  <option value="whole">Whole Syllabus</option>
+                  <option value="subject">Subject Wise</option>
+                  <option value="chapter">Chapter Wise</option>
+                </select>
+              </div>
+
+              <!-- Subject & Chapter Select -->
+              <div
+                class="mb-3"
+                v-if="
+                  quizForm.quizType === 'subject' ||
+                  quizForm.quizType === 'chapter'
+                "
+              >
+                <label class="form-label mt-2">Subject</label>
+                <select
+                  class="form-select"
+                  id="subjectId"
+                  v-model="quizForm.subjectId"
+                  required
+                >
+                  <option :value="null" disabled hidden>
+                    Select a Subject
+                  </option>
+                  <option v-for="sub in Subjects" :key="sub.id" :value="sub.id">
+                    {{ sub.name }}
+                  </option>
+                </select>
+              </div>
+              <div class="mb-3" v-if="quizForm.quizType === 'chapter'">
+                <label class="form-label mt-2">Chapter</label>
+                <select
+                  class="form-control"
+                  v-model="quizForm.chapterId"
+                  required
+                >
+                  <option :value="null" disabled hidden>
+                    Select a Chapter
+                  </option>
+                  <option
+                    v-for="chap in filteredChapters"
+                    :key="chap.id"
+                    :value="chap.id"
+                  >
+                    {{ chap.name }}
+                  </option>
                 </select>
               </div>
               <div class="mb-3">
@@ -183,41 +224,23 @@
     </div>
   </div>
 </template>
-
 <script setup>
-import { ref, reactive, computed } from "vue";
+import { ref, reactive, computed, onMounted, watch } from "vue";
 import { Modal } from "bootstrap";
 
-const quizzes = ref([
-  {
-    id: 1,
-    title: "Math Quiz 101",
-    category: "Mathematics",
-    questionCount: 10,
-    dateCreated: "2023-05-01",
-  },
-  {
-    id: 2,
-    title: "Science Trivia",
-    category: "Science",
-    questionCount: 15,
-    dateCreated: "2023-05-02",
-  },
-  {
-    id: 3,
-    title: "History Challenge",
-    category: "History",
-    questionCount: 20,
-    dateCreated: "2023-05-03",
-  },
-]);
+const apiBaseUrl = "http://localhost:5000/api/admin/dashboard"; // Backend API ka URL
 
+const quizzes = ref([]);
+const Subjects = ref([]);
+const Chapters = ref([]);
 const searchQuery = ref("");
 const isEditing = ref(false);
 const quizForm = reactive({
   id: null,
   title: "",
-  category: "",
+  quizType: "",
+  subjectId: null,
+  chapterId: null,
   questions: [
     {
       text: "",
@@ -227,16 +250,53 @@ const quizForm = reactive({
   ],
 });
 
-const filteredQuizzes = computed(() => {
-  return quizzes.value.filter(
-    (quiz) =>
-      quiz.title.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-      quiz.category.toLowerCase().includes(searchQuery.value.toLowerCase())
+let quizFormModal;
+
+// API se quizzes fetch karna
+const fetchQuizzes = async () => {
+  try {
+    const response = await fetch(`${apiBaseUrl}/all/quizzes`);
+    if (!response.ok) throw new Error("Failed to fetch quizzes");
+    quizzes.value = await response.json();
+  } catch (error) {
+    console.error("Error fetching quizzes:", error);
+  }
+};
+
+const fetchSubjectsAndChapters = async () => {
+  try {
+    const subjectsRes = await fetch(`${apiBaseUrl}/all/subjects`);
+    Subjects.value = await subjectsRes.json();
+    console.log("Subjects fetched:", Subjects.value);
+
+    const chaptersRes = await fetch(`${apiBaseUrl}/all/chapters`);
+    Chapters.value = await chaptersRes.json();
+    console.log("Chapters fetched:", Chapters.value);
+  } catch (error) {
+    console.error("Error fetching subjects and chapters:", error);
+  }
+};
+
+const filteredChapters = computed(() => {
+  if (!quizForm.subjectId) return Chapters.value; // Agar subject select nahi hai, sabhi chapters dikhao
+  return Chapters.value.filter(
+    (chap) => chap.subject_id === quizForm.subjectId
   );
 });
 
-let quizFormModal;
+watch(
+  () => quizForm.chapterId,
+  (newChapterId) => {
+    const selectedChapter = Chapters.value.find(
+      (chap) => chap.id === newChapterId
+    );
+    if (selectedChapter) {
+      quizForm.subjectId = selectedChapter.subject_id;
+    }
+  }
+);
 
+// Quiz add/edit modal open karna
 const openQuizForm = () => {
   isEditing.value = false;
   resetForm();
@@ -246,46 +306,73 @@ const openQuizForm = () => {
   quizFormModal.show();
 };
 
+// Quiz edit karna
 const editQuiz = (quiz) => {
   isEditing.value = true;
-  Object.assign(quizForm, quiz);
+  Object.assign(quizForm, JSON.parse(JSON.stringify(quiz))); // Deep copy to avoid mutation
   if (!quizFormModal) {
     quizFormModal = new Modal(document.getElementById("quizFormModal"));
   }
   quizFormModal.show();
 };
 
-const deleteQuiz = (quiz) => {
-  if (confirm(`Are you sure you want to delete "${quiz.title}"?`)) {
-    quizzes.value = quizzes.value.filter((q) => q.id !== quiz.id);
-  }
-};
-
-const submitQuizForm = () => {
-  if (isEditing.value) {
-    const index = quizzes.value.findIndex((q) => q.id === quizForm.id);
-    if (index !== -1) {
-      quizzes.value[index] = {
-        ...quizForm,
-        questionCount: quizForm.questions.length,
-      };
+// Quiz delete karna
+const deleteQuiz = async (quizId) => {
+  if (confirm("Are you sure you want to delete this quiz?")) {
+    try {
+      const response = await fetch(`${apiBaseUrl}/${quizId}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) throw new Error("Failed to delete quiz");
+      quizzes.value = quizzes.value.filter((q) => q.id !== quizId);
+    } catch (error) {
+      console.error("Error deleting quiz:", error);
     }
-  } else {
-    quizzes.value.push({
-      id: quizzes.value.length + 1,
-      ...quizForm,
-      questionCount: quizForm.questions.length,
-      dateCreated: new Date().toISOString().split("T")[0],
-    });
   }
-  quizFormModal.hide();
-  resetForm();
 };
 
+// Quiz submit karna (Add/Edit)
+const submitQuizForm = async () => {
+  const method = isEditing.value ? "PUT" : "POST";
+  const url = isEditing.value
+    ? `${apiBaseUrl}/${quizForm.id}`
+    : `${apiBaseUrl}/add/quiz`;
+
+  try {
+    const response = await fetch(url, {
+      method: method,
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        title: quizForm.title,
+        quizType: quizForm.quizType,
+        questions: quizForm.questions,
+      }),
+    });
+
+    if (!response.ok) throw new Error("Failed to save quiz");
+
+    const savedQuiz = await response.json();
+    if (isEditing.value) {
+      const index = quizzes.value.findIndex((q) => q.id === savedQuiz.id);
+      quizzes.value[index] = savedQuiz;
+    } else {
+      quizzes.value.push(savedQuiz);
+    }
+
+    quizFormModal.hide();
+    resetForm();
+  } catch (error) {
+    console.error("Error saving quiz:", error);
+  }
+};
+
+// Form reset karna
 const resetForm = () => {
   quizForm.id = null;
   quizForm.title = "";
-  quizForm.category = "";
+  quizForm.quizType = "";
   quizForm.questions = [
     {
       text: "",
@@ -295,6 +382,7 @@ const resetForm = () => {
   ];
 };
 
+// Naya question add karna
 const addQuestion = () => {
   quizForm.questions.push({
     text: "",
@@ -303,9 +391,29 @@ const addQuestion = () => {
   });
 };
 
+// Question remove karna
 const removeQuestion = (index) => {
   quizForm.questions.splice(index, 1);
 };
+
+// #fetching api during page load
+onMounted(async () => {
+  await fetchQuizzes();
+  await fetchSubjectsAndChapters();
+});
+
+// Search filter
+const filteredQuizzes = computed(() => {
+  return quizzes.value.filter(
+    (quiz) =>
+      quiz.title
+        ?.toLowerCase()
+        .includes(searchQuery.value?.toLowerCase() || "") ||
+      quiz.quiz_type
+        ?.toLowerCase()
+        .includes(searchQuery.value?.toLowerCase() || "")
+  );
+});
 </script>
 
 <style scoped>

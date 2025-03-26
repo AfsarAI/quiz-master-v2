@@ -14,8 +14,7 @@
       <div class="col-md-6">
         <select v-model="roleFilter" class="form-select">
           <option value="">All Roles</option>
-          <option value="student">Student</option>
-          <option value="teacher">Teacher</option>
+          <option value="user">Student</option>
           <option value="admin">Admin</option>
         </select>
       </div>
@@ -26,19 +25,19 @@
         <div class="card h-100">
           <div class="card-body">
             <div class="d-flex justify-content-between align-items-center mb-3">
-              <h5 class="card-title mb-0">{{ user.name }}</h5>
-              <span :class="getRoleBadgeClass(user.role)">{{ user.role }}</span>
+              <h5 class="card-title mb-0">{{ user.fullname }}</h5>
+              <span :class="getRoleBadgeClass(user.roles[0]?.name)">{{
+                user.roles[0]?.name
+              }}</span>
             </div>
             <p class="card-text">
               <i class="bi bi-envelope me-2"></i>{{ user.email }}
             </p>
             <p class="card-text">
-              <i class="bi bi-calendar-event me-2"></i>Joined:
-              {{ user.joinDate }}
+              <i class="bi bi-calendar-event me-2"></i>DOB: {{ user.dob }}
             </p>
             <p class="card-text">
-              <i class="bi bi-trophy me-2"></i>Quizzes Taken:
-              {{ user.quizzesTaken }}
+              <i class="bi bi-telephone me-2"></i>{{ user.phone }}
             </p>
           </div>
           <div class="card-footer">
@@ -52,73 +51,92 @@
         </div>
       </div>
     </div>
+  </div>
 
-    <!-- User Details Modal -->
-    <div
-      class="modal fade"
-      id="userDetailsModal"
-      tabindex="-1"
-      aria-labelledby="userDetailsModalLabel"
-      aria-hidden="true"
-    >
-      <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title" id="userDetailsModalLabel">User Details</h5>
-            <button
-              type="button"
-              class="btn-close"
-              data-bs-dismiss="modal"
-              aria-label="Close"
-            ></button>
-          </div>
-          <div class="modal-body" v-if="selectedUser">
-            <div class="row">
-              <div class="col-md-6">
-                <h6>Personal Information</h6>
-                <p><strong>Name:</strong> {{ selectedUser.name }}</p>
-                <p><strong>Email:</strong> {{ selectedUser.email }}</p>
-                <p><strong>Role:</strong> {{ selectedUser.role }}</p>
-                <p><strong>Join Date:</strong> {{ selectedUser.joinDate }}</p>
-              </div>
-              <div class="col-md-6">
-                <h6>Quiz Statistics</h6>
-                <p>
-                  <strong>Quizzes Taken:</strong>
-                  {{ selectedUser.quizzesTaken }}
-                </p>
-                <p>
-                  <strong>Average Score:</strong>
-                  {{ selectedUser.averageScore }}%
-                </p>
-                <p>
-                  <strong>Highest Score:</strong>
-                  {{ selectedUser.highestScore }}%
-                </p>
-              </div>
+  <!-- User Details Modal -->
+  <div
+    class="modal fade"
+    id="userDetailsModal"
+    tabindex="-1"
+    aria-hidden="true"
+  >
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">User Details</h5>
+          <button
+            type="button"
+            class="btn-close"
+            data-bs-dismiss="modal"
+          ></button>
+        </div>
+        <div class="modal-body" v-if="selectedUser">
+          <div class="row">
+            <!-- 🟢 Profile Image -->
+            <div class="col-md-4 text-center">
+              <img
+                v-if="selectedUser.profileImage"
+                :src="selectedUser.profileImage"
+                class="rounded-circle img-fluid"
+                alt="Profile Image"
+              />
+              <img
+                v-else
+                src="https://picsum.photos/300/200?random=1"
+                class="rounded-circle img-fluid"
+                alt="Default Avatar"
+              />
             </div>
-            <div class="mt-4">
-              <h6>Recent Activity</h6>
-              <ul class="list-group">
-                <li
-                  v-for="(activity, index) in selectedUser.recentActivity"
-                  :key="index"
-                  class="list-group-item"
-                >
-                  <strong>{{ activity.date }}:</strong> {{ activity.action }}
-                </li>
-              </ul>
+
+            <!-- 🟢 Personal Info -->
+            <div class="col-md-8">
+              <h6>Personal Information</h6>
+              <p><strong>Name:</strong> {{ selectedUser.fullname }}</p>
+              <p><strong>Email:</strong> {{ selectedUser.email }}</p>
+              <p><strong>Role:</strong> {{ selectedUser.roles[0]?.name }}</p>
+              <p><strong>Date of Birth:</strong> {{ selectedUser.dob }}</p>
             </div>
           </div>
-          <div class="modal-footer">
-            <button
-              type="button"
-              class="btn btn-secondary"
-              data-bs-dismiss="modal"
-            >
-              Close
-            </button>
+
+          <!-- 🟢 Quiz Statistics -->
+          <div class="mt-3">
+            <h6>Quiz Statistics</h6>
+            <p>
+              <strong>Quizzes Taken:</strong>
+              {{ selectedUser.quizzesTaken || "N/A" }}
+            </p>
+            <p>
+              <strong>Average Score:</strong>
+              {{ selectedUser.averageScore || "N/A" }}%
+            </p>
+            <p>
+              <strong>Highest Score:</strong>
+              {{ selectedUser.highestScore || "N/A" }}%
+            </p>
           </div>
+
+          <!-- 🟢 Recent Activity -->
+          <div class="mt-4">
+            <h6>Recent Activity</h6>
+            <ul class="list-group">
+              <li
+                v-for="(activity, index) in selectedUser.recentActivity"
+                :key="index"
+                class="list-group-item"
+              >
+                <strong>{{ activity.date }}:</strong> {{ activity.action }}
+              </li>
+            </ul>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button
+            type="button"
+            class="btn btn-secondary"
+            data-bs-dismiss="modal"
+          >
+            Close
+          </button>
         </div>
       </div>
     </div>
@@ -126,91 +144,66 @@
 </template>
 
 <script setup>
-import { ref, computed } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { Modal } from "bootstrap";
 
-const users = ref([
-  {
-    id: 1,
-    name: "John Doe",
-    email: "john@example.com",
-    role: "student",
-    joinDate: "2023-01-15",
-    quizzesTaken: 25,
-    averageScore: 85,
-    highestScore: 98,
-    recentActivity: [
-      { date: "2023-05-10", action: "Completed Math Quiz" },
-      { date: "2023-05-08", action: "Started Science Course" },
-      { date: "2023-05-05", action: "Achieved new high score in History Quiz" },
-    ],
-  },
-  {
-    id: 2,
-    name: "Jane Smith",
-    email: "jane@example.com",
-    role: "teacher",
-    joinDate: "2022-11-30",
-    quizzesTaken: 15,
-    averageScore: 92,
-    highestScore: 100,
-    recentActivity: [
-      { date: "2023-05-09", action: "Created new Science Quiz" },
-      { date: "2023-05-07", action: "Graded Math assignments" },
-      { date: "2023-05-04", action: "Updated Literature course material" },
-    ],
-  },
-  {
-    id: 3,
-    name: "Bob Johnson",
-    email: "bob@example.com",
-    role: "admin",
-    joinDate: "2022-09-01",
-    quizzesTaken: 5,
-    averageScore: 88,
-    highestScore: 95,
-    recentActivity: [
-      { date: "2023-05-10", action: "Added new user accounts" },
-      { date: "2023-05-06", action: "Updated system settings" },
-      { date: "2023-05-03", action: "Generated monthly report" },
-    ],
-  },
-]);
-
+const users = ref([]);
 const searchQuery = ref("");
 const roleFilter = ref("");
 const selectedUser = ref(null);
+let userDetailsModal;
 
+// 🟢 API se data fetch karne ka function
+const fetchUsers = async () => {
+  try {
+    const response = await fetch("http://localhost:5000/api/all/users/data");
+    const data = await response.json();
+
+    console.log("API Response:", data); // 🟢 Check if data is correct
+
+    if (Array.isArray(data)) {
+      users.value = data; // ✅ Assign users array properly
+    } else {
+      console.error("Unexpected API response format", data);
+    }
+  } catch (error) {
+    console.error("Error fetching users:", error);
+  }
+};
+
+// 🟢 Computed property jo search & filter apply kare
 const filteredUsers = computed(() => {
-  return users.value.filter(
+  return (users.value || []).filter(
     (user) =>
-      (user.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-        user.email.toLowerCase().includes(searchQuery.value.toLowerCase())) &&
-      (roleFilter.value === "" || user.role === roleFilter.value)
+      (user.fullname?.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+        user.email?.toLowerCase().includes(searchQuery.value.toLowerCase())) &&
+      (roleFilter.value === "" ||
+        user.roles?.some((role) => role.name === roleFilter.value))
   );
 });
 
-let userDetailsModal;
-
+// 🟢 User details modal dikhane ka function
 const viewUserDetails = (user) => {
   selectedUser.value = user;
   if (!userDetailsModal) {
-    userDetailsModal = new Modal(document.getElementById("userDetailsModal"));
+    userDetailsModal = new Modal(document.getElementById("userDetailsModal"), {
+      backdrop: "static",
+    });
   }
   userDetailsModal.show();
 };
 
+// 🟢 User delete karne ka function
 const deleteUser = (user) => {
-  if (confirm(`Are you sure you want to delete ${user.name}?`)) {
+  if (confirm(`Are you sure you want to delete ${user.fullname}?`)) {
     users.value = users.value.filter((u) => u.id !== user.id);
   }
 };
 
+// 🟢 Role ke hisaab se badge color dena
 const getRoleBadgeClass = (role) => {
   switch (role) {
-    case "student":
-      return "badge bg-primary";
-    case "teacher":
+    case "user":
       return "badge bg-success";
     case "admin":
       return "badge bg-danger";
@@ -218,6 +211,9 @@ const getRoleBadgeClass = (role) => {
       return "badge bg-secondary";
   }
 };
+
+// 🟢 Jab component mount ho, tab API call kare
+onMounted(fetchUsers);
 </script>
 
 <style scoped>

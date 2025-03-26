@@ -1,6 +1,6 @@
 <template>
   <div class="user-home container-fluid py-4">
-    <h2 class="mb-4">Welcome, {{ user.fullname }}!</h2>
+    <h2 class="mb-4">User Home Page!</h2>
 
     <div class="row g-4 mb-4">
       <div
@@ -27,7 +27,10 @@
             <h5 class="mb-0">Upcoming Quizzes</h5>
           </div>
           <div class="card-body">
-            <ul class="list-group list-group-flush">
+            <ul
+              v-if="upcomingQuizzes.length"
+              class="list-group list-group-flush"
+            >
               <li
                 v-for="quiz in upcomingQuizzes"
                 :key="quiz.id"
@@ -42,30 +45,33 @@
                 }}</span>
               </li>
             </ul>
+            <p v-else class="text-muted">No quizzes available at this time.</p>
           </div>
         </div>
       </div>
+
       <div class="col-md-6">
         <div class="card h-100">
           <div class="card-header bg-success text-white">
-            <h5 class="mb-0">Recent Achievements</h5>
+            <h5 class="mb-0">All Subjects</h5>
           </div>
           <div class="card-body">
-            <ul class="list-group list-group-flush">
+            <ul v-if="subjectList.length" class="list-group list-group-flush">
               <li
-                v-for="achievement in recentAchievements"
-                :key="achievement.id"
+                v-for="subject in subjectList"
+                :key="subject.id"
                 class="list-group-item d-flex justify-content-between align-items-center"
               >
                 <div>
-                  <i :class="achievement.icon + ' me-2'"></i>
-                  <span>{{ achievement.title }}</span>
+                  <i :class="subject.icon + ' me-2'"></i>
+                  <span>{{ subject.title }}</span>
                 </div>
                 <span class="badge bg-success rounded-pill">{{
-                  achievement.date
+                  subject.date
                 }}</span>
               </li>
             </ul>
+            <p v-else class="text-muted">No subjects available at this time.</p>
           </div>
         </div>
       </div>
@@ -78,7 +84,13 @@
             <h5 class="mb-0">Your Learning Progress</h5>
           </div>
           <div class="card-body">
-            <canvas id="learningProgressChart"></canvas>
+            <canvas
+              v-if="quizScores.length"
+              id="learningProgressChart"
+            ></canvas>
+            <p v-else class="text-muted">
+              No data available for learning progress at this time.
+            </p>
           </div>
         </div>
       </div>
@@ -88,61 +100,63 @@
 
 <script setup>
 import { ref, onMounted } from "vue";
+import { useStore } from "vuex";
 import Chart from "chart.js/auto";
 
-const user = ref({
-  fullname: "John Doe",
-  // Add other user details as needed
-});
+const store = useStore();
+const userId = ref(null);
 
-const userStats = ref([
-  { title: "Quizzes Taken", value: 25, icon: "bi bi-journal-check" },
-  { title: "Average Score", value: "85%", icon: "bi bi-graph-up" },
-  { title: "Study Streak", value: 7, icon: "bi bi-calendar-check" },
-  { title: "Achievements", value: 12, icon: "bi bi-trophy" },
-]);
+if (!store.state.user?.id) {
+  console.error("User ID not found. Please ensure the user is logged in.");
+} else {
+  userId.value = store.state.user.id;
+}
 
-const upcomingQuizzes = ref([
-  {
-    id: 1,
-    title: "Advanced Mathematics",
-    subject: "Mathematics",
-    date: "Tomorrow",
-  },
-  { id: 2, title: "World History", subject: "History", date: "In 2 days" },
-  {
-    id: 3,
-    title: "Physics Fundamentals",
-    subject: "Science",
-    date: "Next week",
-  },
-]);
+// Reactive variables to store fetched data
+const userStats = ref([]);
+const upcomingQuizzes = ref([]);
+const subjectList = ref([]);
+const quizScores = ref([]);
 
-const recentAchievements = ref([
-  { id: 1, title: "Quiz Master", icon: "bi bi-star-fill", date: "Today" },
-  {
-    id: 2,
-    title: "Fast Learner",
-    icon: "bi bi-lightning-charge-fill",
-    date: "2 days ago",
-  },
-  {
-    id: 3,
-    title: "Consistent Performer",
-    icon: "bi bi-graph-up-arrow",
-    date: "1 week ago",
-  },
-]);
+// Generic function to fetch data using Fetch API
+const fetchData = async (url, targetRef) => {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`HTTP error! Status: ${response.status}`);
+    }
+    const data = await response.json();
+    if (data?.user_stats_data) {
+      targetRef.value = data.user_stats_data;
+    } else {
+      console.error("Invalid data format:", data);
+    }
+  } catch (error) {
+    console.error(`Error fetching data from ${url}:`, error);
+  }
+};
 
-onMounted(() => {
-  new Chart(document.getElementById("learningProgressChart"), {
+// Render Chart using fetched quiz scores
+const renderChart = () => {
+  if (!quizScores.value.length) {
+    console.error("No data available for chart rendering.");
+    return;
+  }
+
+  const ctx = document.getElementById("learningProgressChart");
+  if (!ctx) {
+    console.error("Chart element not found.");
+    return;
+  }
+
+  new Chart(ctx, {
     type: "line",
     data: {
       labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
       datasets: [
         {
           label: "Quiz Scores",
-          data: [65, 70, 75, 80, 85, 90],
+          data: quizScores.value,
           borderColor: "rgb(75, 192, 192)",
           tension: 0.1,
         },
@@ -164,6 +178,30 @@ onMounted(() => {
       },
     },
   });
+};
+
+// Fetch all data and render chart on component mount
+onMounted(async () => {
+  await Promise.all([
+    fetchData(
+      `http://localhost:5000/api/user/dashboard/${userId.value}/user-stats`,
+      userStats
+    ),
+    fetchData(
+      "http://localhost:5000/api/user/dashboard/upcoming-quizzes",
+      upcomingQuizzes
+    ),
+    fetchData(
+      `http://localhost:5000/api/user/dashboard/${userId.value}/subjects`,
+      subjectList
+    ),
+    fetchData(
+      `http://localhost:5000/api/user/dashboard/${userId.value}/quiz-scores`,
+      quizScores
+    ),
+  ]);
+  console.log("User Stats Data:", userStats.value);
+  renderChart();
 });
 </script>
 

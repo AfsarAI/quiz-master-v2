@@ -123,7 +123,9 @@ const topScorers = ref([]);
 // Fetch Stats with Trend Calculation
 const fetchStats = async () => {
   try {
-    const response = await fetch("http://127.0.0.1:5000/api/dashboard/stats");
+    const response = await fetch(
+      "http://127.0.0.1:5000/api/admin/dashboard/stats"
+    );
     const data = await response.json();
 
     // Calculate trends dynamically based on last week's data
@@ -144,7 +146,7 @@ const fetchStats = async () => {
 const fetchRecentActivity = async () => {
   try {
     const response = await fetch(
-      "http://127.0.0.1:5000/api/dashboard/get/recent-activity/data"
+      "http://127.0.0.1:5000/api/admin/dashboard/get/recent-activity/data"
     );
     const data = await response.json();
     // Check if activities exist, otherwise set an empty array
@@ -158,7 +160,7 @@ const fetchRecentActivity = async () => {
 const fetchTopScorers = async () => {
   try {
     const response = await fetch(
-      "http://127.0.0.1:5000/api/dashboard/top-scorers"
+      "http://127.0.0.1:5000/api/admin/dashboard/top-scorers"
     );
     const data = await response.json();
     topScorers.value = data.top_scorers || [];
@@ -171,7 +173,7 @@ const fetchTopScorers = async () => {
 const initUserEngagementChart = async () => {
   try {
     const response = await fetch(
-      "http://127.0.0.1:5000/api/dashboard/user-engagement"
+      "http://127.0.0.1:5000/api/admin/dashboard/user-engagement"
     );
     const engagementData = await response.json();
 

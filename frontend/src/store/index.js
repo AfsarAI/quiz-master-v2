@@ -11,9 +11,13 @@ export default createStore({
       fullName: "",
     },
     toasts: [],
+    quizState: null,
+    quizResults: null,
     activeSection: "overview",
   },
+
   mutations: {
+    // Dark mode
     toggleDarkMode(state, value = null) {
       if (value !== null) {
         state.isDarkMode = value;
@@ -24,6 +28,8 @@ export default createStore({
       const dark = localStorage.getItem("isDarkMode");
       console.log("darkmode!", dark);
     },
+
+    // User state
     setUser(state, user) {
       state.user = {
         auth_token: user.token,
@@ -68,17 +74,37 @@ export default createStore({
         new Blob(Object.values(localStorage)).size / 1024 / 1024 + " MB"
       );
     },
+
+    // Add toast to the state
     ADD_TOAST(state, toast) {
       state.toasts.push(toast);
     },
     REMOVE_TOAST(state, index) {
       state.toasts.splice(index, 1);
     },
+
+    // Set the active section
     setActiveSection(state, section) {
       state.activeSection = section;
     },
+
+    // Quiz state and results
+    setQuizState(state, quizState) {
+      state.quizState = quizState;
+    },
+    clearQuizState(state) {
+      state.quizState = null;
+    },
+    setQuizResults(state, results) {
+      state.quizResults = results;
+    },
+    clearQuizResults(state) {
+      state.quizResults = null;
+    },
   },
+
   actions: {
+    // Login and logout || Set user
     login({ commit }, user) {
       if (user && user.token) {
         commit("setUser", user);
@@ -96,6 +122,8 @@ export default createStore({
         commit("setUser", user);
       }
     },
+
+    // Add Toast
     addToast({ commit }, toast) {
       commit("ADD_TOAST", toast);
       setTimeout(() => {
@@ -105,8 +133,19 @@ export default createStore({
     removeToast({ commit }, index) {
       commit("REMOVE_TOAST", index);
     },
+
+    // Set active section
     updateActiveSection({ commit }, section) {
       commit("setActiveSection", section);
+    },
+
+    // Quiz state and results
+    saveQuizState({ commit }, quizState) {
+      commit("setQuizState", quizState);
+    },
+
+    saveQuizResults({ commit }, results) {
+      commit("setQuizResults", results);
     },
   },
   getters: {
@@ -114,5 +153,7 @@ export default createStore({
     user: (state) => state.user,
     isDarkMode: (state) => state.isDarkMode,
     activeSection: (state) => state.activeSection,
+    getQuizState: (state) => state.quizState,
+    getQuizResults: (state) => state.quizResults,
   },
 });

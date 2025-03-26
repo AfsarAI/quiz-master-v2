@@ -150,9 +150,11 @@
 
 <script setup>
 import { ref, reactive, onMounted } from "vue";
+import { useRouter } from "vue-router";
 import { Modal } from "bootstrap";
 
-const apiBase = "http://127.0.0.1:5000/api/dashboard";
+const apiBase = "http://127.0.0.1:5000/api/admin/dashboard";
+const router = useRouter();
 
 const actions = [
   {
@@ -190,6 +192,7 @@ const fetchData = async () => {
 
 const openForm = (type) => {
   if (type === "quiz") {
+    router.push("quizzes");
     console.log("Navigating to quiz page");
     return;
   }

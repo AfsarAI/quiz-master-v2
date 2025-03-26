@@ -1,11 +1,12 @@
 from flask import jsonify, request
 from flask_restful import Resource, marshal_with
-from models import Chapter, Qualification, Quiz, RecentActivity, Subject, User, Score
+from flask_security import auth_required
+from models import Chapter, Qualification, Question, Quiz, RecentActivity, Subject, User, Score
 from datetime import datetime, timedelta
 from sqlalchemy import func
 
 from models import db, User, Score
-from .fields_definitions import activity_fields, qual_fields, score_fields, subjects_fields
+from .fields_definitions import activity_fields, qual_fields, score_fields, subjects_fields, user_fields, quizzes_fields, chapters_fields
 
 
 
@@ -31,9 +32,7 @@ class AdminStatsResource(Resource):
                 {"title": "Avg. Quiz Score", "value": f"{avg_score:.2f}%", "previous": f"{prev_avg_score:.2f}%"}
             ]
         })
-
-
-        
+   
 
 class AllRecentActivityResource(Resource):
     @marshal_with(activity_fields)
@@ -68,6 +67,30 @@ class AllSubjectsResource(Resource):
         subjects = Subject.query.all()
         return subjects
 
+class AllChaptersResource(Resource):
+    @marshal_with(chapters_fields)
+    def get(self):
+        chapters = Chapter.query.all()
+        return chapters
+
+class AllUsersResource(Resource):
+    @marshal_with(user_fields)
+    def get(self):
+        users = User.query.all()
+        return users
+
+class AllScoresResource(Resource):
+    @marshal_with(score_fields)
+    def get(self):
+        scores = Score.query.all()
+        return scores
+
+class AdminAllQuizzesResource(Resource):
+    @marshal_with(quizzes_fields)
+    def get(self):
+        quizzes = Quiz.query.all()
+        return quizzes
+
 
 # adding class, subject, chapter
 class AddQualificationResource(Resource):
@@ -95,22 +118,32 @@ class AddChapterResource(Resource):
         db.session.commit()
         return {'message': 'Chapter added successfully!'}, 201
 
+class AddQuizResource(Resource):
+    def post(self):
+        data = request.get_json()
+        print(data)
+        
+        # Pehle Quiz create karo
+        new_quiz = Quiz(title=data['title'], quiz_type=data['quiz_type'], subject_id=data['subjectId'], chapter_id=data['chapterId'], duration=10)
+        db.session.add(new_quiz)
+        db.session.flush()  # Taake id mil sake bina commit kiye
 
-# All things!
-class AllUsersResource(Resource):
-    @marshal_with(qual_fields)
-    def get(self):
-        users = User.query.all()
-        return users
+        # Agar questions bhi aaye hain, toh unko bhi save karo
+        questions = data.get("questions", [])
+        print(questions)
+        for q in questions:
+            print(q)
+            new_question = Question(
+                quiz_id=new_quiz.id,
+                question_text=q['text'],
+                option1=q['options'][0]['text'],  # ✅ Fix: dictionary ke andar se value lo
+                option2=q['options'][1]['text'],
+                option3=q['options'][2]['text'],
+                option4=q['options'][3]['text'],
+                correct_option=q['correctAnswer']
+            )
+            db.session.add(new_question)
 
-class AllScoresResource(Resource):
-    @marshal_with(score_fields)
-    def get(self):
-        scores = Score.query.all()
-        return scores
+        db.session.commit()  # Sab data ek saath save hoga
 
-class AllQuizzesResource(Resource):
-    @marshal_with(score_fields)
-    def get(self):
-        quizzes = Quiz.query.all()
-        return quizzes
+        return {"message": "Quiz and questions created successfully!", "quiz_id": new_quiz.id}, 201

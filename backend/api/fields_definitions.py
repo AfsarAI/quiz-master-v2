@@ -1,11 +1,18 @@
 from flask_restful import fields
 
+chapters_fields = {
+    "id": fields.Integer,
+    "name": fields.String,
+    "description": fields.String,
+    "subject_id": fields.Integer
+}
 
 subjects_fields = {
     "id": fields.Integer,
     "name": fields.String,
     "description": fields.String,
-    "qualification_id": fields.Integer
+    "qualification_id": fields.Integer,
+    "chapters": fields.List(fields.Nested(chapters_fields))
 }
 
 

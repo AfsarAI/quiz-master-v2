@@ -120,6 +120,18 @@ const routes = [
     ],
   },
   {
+    path: "/quiz-master/:role(admin|user)/:user_id/dashboard/quiz/:quiz_id/interface",
+    name: "quiz-interface",
+    component: () => import("../views/QuizInterface.vue"),
+    meta: { title: "Quiz-Interface", requiresLogin: true, roles: ["user"] },
+  },
+  {
+    path: "/quiz-master/:role(admin|user)/:user_id/dashboard/quiz/:quiz_id/result",
+    name: "quiz-result",
+    component: () => import("../views/QuizResult.vue"),
+    meta: { title: "Quiz-Result", requiresLogin: true, roles: ["user"] },
+  },
+  {
     path: "/",
     redirect: "/quiz-master",
   },
