@@ -38,10 +38,10 @@
               >
                 <div>
                   <h6 class="mb-0">{{ quiz.title }}</h6>
-                  <small class="text-muted">{{ quiz.subject }}</small>
+                  <small class="text-muted">{{ quiz.quiz_type }}</small>
                 </div>
                 <span class="badge bg-primary rounded-pill">{{
-                  quiz.date
+                  quiz.date_created
                 }}</span>
               </li>
             </ul>
@@ -63,53 +63,53 @@
                 class="list-group-item d-flex justify-content-between align-items-center"
               >
                 <div>
-                  <i :class="subject.icon + ' me-2'"></i>
-                  <span>{{ subject.title }}</span>
+                  <!-- Constant book icon -->
+                  <i class="bi bi-book me-2"></i>
+                  <span>{{ subject.name }}</span>
                 </div>
-                <span class="badge bg-success rounded-pill">{{
-                  subject.date
-                }}</span>
+
+                <!-- Chapter count with badge -->
+                <span class="badge bg-primary rounded-pill">
+                  {{ subject.chapters.length }} Chapters
+                </span>
               </li>
             </ul>
             <p v-else class="text-muted">No subjects available at this time.</p>
           </div>
         </div>
       </div>
-    </div>
 
-    <div class="row mt-4">
-      <div class="col-12">
-        <div class="card">
-          <div class="card-header bg-info text-white">
-            <h5 class="mb-0">Your Learning Progress</h5>
-          </div>
-          <div class="card-body">
-            <canvas
-              v-if="quizScores.length"
-              id="learningProgressChart"
-            ></canvas>
-            <p v-else class="text-muted">
-              No data available for learning progress at this time.
-            </p>
+      <div class="row mt-4">
+        <div class="col-12">
+          <div class="card">
+            <div class="card-header bg-info text-white">
+              <h5 class="mb-0">Your Learning Progress</h5>
+            </div>
+            <div class="card-body">
+              <canvas
+                v-if="quizScores.length"
+                id="learningProgressChart"
+              ></canvas>
+              <p v-else class="text-muted">
+                No data available for learning progress at this time.
+              </p>
+            </div>
           </div>
         </div>
       </div>
     </div>
   </div>
 </template>
-
 <script setup>
 import { ref, onMounted } from "vue";
 import { useStore } from "vuex";
 import Chart from "chart.js/auto";
 
 const store = useStore();
-const userId = ref(null);
+const userId = store.state.user?.id;
 
-if (!store.state.user?.id) {
+if (!userId) {
   console.error("User ID not found. Please ensure the user is logged in.");
-} else {
-  userId.value = store.state.user.id;
 }
 
 // Reactive variables to store fetched data
@@ -118,21 +118,60 @@ const upcomingQuizzes = ref([]);
 const subjectList = ref([]);
 const quizScores = ref([]);
 
-// Generic function to fetch data using Fetch API
-const fetchData = async (url, targetRef) => {
+// Fetch User Stats
+const fetchUserStats = async () => {
   try {
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`HTTP error! Status: ${response.status}`);
-    }
+    const response = await fetch(
+      `http://localhost:5000/api/user/dashboard/${userId}/user-stats`
+    );
+    if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
     const data = await response.json();
-    if (data?.user_stats_data) {
-      targetRef.value = data.user_stats_data;
-    } else {
-      console.error("Invalid data format:", data);
-    }
+    userStats.value = data.user_stats_data || [];
   } catch (error) {
-    console.error(`Error fetching data from ${url}:`, error);
+    console.error("Error fetching user stats:", error);
+  }
+};
+
+// Fetch Upcoming Quizzes
+const fetchUpcomingQuizzes = async () => {
+  try {
+    const response = await fetch(
+      "http://localhost:5000/api/user/dashboard/upcoming-quizzes"
+    );
+    if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+    const data = await response.json();
+    upcomingQuizzes.value = data || [];
+  } catch (error) {
+    console.error("Error fetching upcoming quizzes:", error);
+  }
+};
+
+// Fetch Subjects
+const fetchSubjects = async () => {
+  try {
+    const response = await fetch(
+      `http://localhost:5000/api/user/dashboard/${userId}/subjects`
+    );
+    if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+    const data = await response.json();
+    subjectList.value = data || [];
+  } catch (error) {
+    console.error("Error fetching subjects:", error);
+  }
+};
+
+// Fetch Quiz Scores
+const fetchQuizScores = async () => {
+  try {
+    const response = await fetch(
+      `http://localhost:5000/api/user/dashboard/${userId}/quiz-scores`
+    );
+    if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+    const data = await response.json();
+    quizScores.value = data || [];
+    renderChart();
+  } catch (error) {
+    console.error("Error fetching quiz scores:", error);
   }
 };
 
@@ -180,28 +219,11 @@ const renderChart = () => {
   });
 };
 
-// Fetch all data and render chart on component mount
-onMounted(async () => {
-  await Promise.all([
-    fetchData(
-      `http://localhost:5000/api/user/dashboard/${userId.value}/user-stats`,
-      userStats
-    ),
-    fetchData(
-      "http://localhost:5000/api/user/dashboard/upcoming-quizzes",
-      upcomingQuizzes
-    ),
-    fetchData(
-      `http://localhost:5000/api/user/dashboard/${userId.value}/subjects`,
-      subjectList
-    ),
-    fetchData(
-      `http://localhost:5000/api/user/dashboard/${userId.value}/quiz-scores`,
-      quizScores
-    ),
-  ]);
-  console.log("User Stats Data:", userStats.value);
-  renderChart();
+onMounted(() => {
+  fetchUserStats();
+  fetchUpcomingQuizzes();
+  fetchSubjects();
+  fetchQuizScores();
 });
 </script>
 

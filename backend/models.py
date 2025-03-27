@@ -77,7 +77,7 @@ class Chapter(db.Model):
     subject_id = db.Column(db.Integer, db.ForeignKey('subject.id'), nullable=False)
     
     # Relationships
-    quizzes = db.relationship('Quiz', backref='chapter', lazy=True)
+    quizzes = db.relationship('Quiz', back_populates='chapter')
     questions = db.relationship('Question', backref='chapter', lazy=True)
 
 
@@ -94,7 +94,8 @@ class Quiz(db.Model):
     # Relationships
     questions = db.relationship('Question', backref='quiz', lazy=True)
     scores = db.relationship('Score', backref='quiz', lazy=True)
-
+    subject = db.relationship('Subject', backref='quizzes', foreign_keys=[subject_id])
+    chapter = db.relationship('Chapter', back_populates='quizzes')
 
 # UserQuizzes Association Table
 class UserQuizzes(db.Model):
@@ -102,7 +103,6 @@ class UserQuizzes(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'))
     quiz_id = db.Column(db.Integer, db.ForeignKey('quiz.id', ondelete='CASCADE'))
     attempt_date = db.Column(db.DateTime, default=datetime.now)
-
 
 
 # Question Model
@@ -125,6 +125,7 @@ class Score(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     quiz_id = db.Column(db.Integer, db.ForeignKey('quiz.id'), nullable=False)
     score = db.Column(db.Float, nullable=False)
+    time_taken = db.Column(db.Integer, nullable=False)
     attempt_date = db.Column(db.DateTime, default=datetime.now, nullable=False)
     active = db.Column(db.Boolean, default=True)
 

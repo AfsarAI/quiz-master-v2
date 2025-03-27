@@ -188,7 +188,6 @@ export default {
 
     // Helper function to handle success scenario
     const handleSuccess = (data) => {
-      showAlert("Login successful!", "success");
       store.dispatch("addToast", {
         message: "Login successful!",
         type: "success",

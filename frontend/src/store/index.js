@@ -1,3 +1,4 @@
+// store/index.js
 import { createStore } from "vuex";
 
 export default createStore({
@@ -11,8 +12,10 @@ export default createStore({
       fullName: "",
     },
     toasts: [],
-    quizState: null,
-    quizResults: null,
+    quiz: {
+      quizState: null, // Stores current quiz state during runtime
+      quizResults: null, // Stores quiz results for the results page
+    },
     activeSection: "overview",
   },
 
@@ -25,8 +28,7 @@ export default createStore({
         state.isDarkMode = !state.isDarkMode;
       }
       localStorage.setItem("isDarkMode", JSON.stringify(state.isDarkMode));
-      const dark = localStorage.getItem("isDarkMode");
-      console.log("darkmode!", dark);
+      console.log("Dark mode toggled:", state.isDarkMode);
     },
 
     // User state
@@ -40,17 +42,12 @@ export default createStore({
       };
 
       const data = localStorage.getItem("user");
-      // If 'user' exists, print it; otherwise, print a message
-      if (data) {
-        console.log(
-          "Don't need to store again!, User found in localStorage:",
-          JSON.parse(data)
-        );
-      } else {
+      if (!data) {
         localStorage.setItem("user", JSON.stringify(user));
-        console.log("User Added Sussesfully!", data);
+        console.log("User added successfully!");
       }
     },
+
     removeUser(state) {
       state.user = {
         auth_token: null,
@@ -60,51 +57,49 @@ export default createStore({
         fullName: "",
       };
       localStorage.removeItem("user");
-      console.log("User Removed!");
-      // Check if 'user' key exists in localStorage
-      const user = localStorage.getItem("user");
-
-      // If 'user' exists, print it; otherwise, print a message
-      if (user) {
-        console.log("User found in localStorage:", JSON.parse(user));
-      } else {
-        console.log("No user found in localStorage.");
-      }
-      console.log(
-        new Blob(Object.values(localStorage)).size / 1024 / 1024 + " MB"
-      );
+      console.log("User removed!");
     },
 
-    // Add toast to the state
+    // Toast notifications
     ADD_TOAST(state, toast) {
       state.toasts.push(toast);
     },
+
     REMOVE_TOAST(state, index) {
       state.toasts.splice(index, 1);
     },
 
-    // Set the active section
+    // Active section
     setActiveSection(state, section) {
       state.activeSection = section;
     },
 
-    // Quiz state and results
+    // Quiz state - only updates the runtime state in Vuex
+    // The component handles localStorage persistence
     setQuizState(state, quizState) {
-      state.quizState = quizState;
+      console.log("Updating quiz state in Vuex store");
+      state.quiz.quizState = quizState;
     },
+
     clearQuizState(state) {
-      state.quizState = null;
+      console.log("Clearing quiz state from Vuex store");
+      state.quiz.quizState = null;
     },
+
+    // Quiz results - used to pass data to the results page
     setQuizResults(state, results) {
-      state.quizResults = results;
+      console.log("Saving quiz results to Vuex store");
+      state.quiz.quizResults = results;
     },
+
     clearQuizResults(state) {
-      state.quizResults = null;
+      console.log("Clearing quiz results from Vuex store");
+      state.quiz.quizResults = null;
     },
   },
 
   actions: {
-    // Login and logout || Set user
+    // User authentication
     login({ commit }, user) {
       if (user && user.token) {
         commit("setUser", user);
@@ -112,34 +107,40 @@ export default createStore({
         throw new Error("Invalid user data");
       }
     },
+
     logout({ commit }) {
       commit("removeUser");
     },
+
     initializeUser({ commit }) {
-      const user = JSON.parse(localStorage.getItem("user"));
-      console.log("userdata at init:", user);
-      if (user && user.token) {
-        commit("setUser", user);
+      try {
+        const user = JSON.parse(localStorage.getItem("user"));
+        if (user && user.token) {
+          commit("setUser", user);
+        }
+      } catch (error) {
+        console.error("Error initializing user:", error);
       }
     },
 
-    // Add Toast
+    // Toast notifications
     addToast({ commit }, toast) {
       commit("ADD_TOAST", toast);
       setTimeout(() => {
         commit("REMOVE_TOAST", 0);
       }, 5000);
     },
+
     removeToast({ commit }, index) {
       commit("REMOVE_TOAST", index);
     },
 
-    // Set active section
+    // Active section
     updateActiveSection({ commit }, section) {
       commit("setActiveSection", section);
     },
 
-    // Quiz state and results
+    // Quiz state management
     saveQuizState({ commit }, quizState) {
       commit("setQuizState", quizState);
     },
@@ -147,13 +148,62 @@ export default createStore({
     saveQuizResults({ commit }, results) {
       commit("setQuizResults", results);
     },
+
+    // Check if a quiz is in progress by looking at localStorage
+    checkInProgressQuiz(_, { quizId, userId }) {
+      const key = `quizState_${quizId}_${userId || "guest"}`;
+      try {
+        const savedState = JSON.parse(localStorage.getItem(key));
+        if (!savedState) return false;
+
+        // Check if the saved state is still valid (not expired)
+        const currentTime = new Date().getTime();
+        const savedTime = savedState.timestamp;
+        const elapsedSeconds = Math.floor((currentTime - savedTime) / 1000);
+
+        // If the elapsed time is less than the quiz duration, the quiz is still valid
+        return elapsedSeconds < savedState.duration * 60;
+      } catch (error) {
+        console.error("Error checking in-progress quiz:", error);
+        return false;
+      }
+    },
+
+    // Load quiz state from localStorage
+    loadQuizState({ commit }, { quizId, userId }) {
+      const key = `quizState_${quizId}_${userId || "guest"}`;
+      try {
+        const savedState = JSON.parse(localStorage.getItem(key));
+        if (savedState) {
+          commit("setQuizState", savedState);
+          return savedState;
+        }
+      } catch (error) {
+        console.error("Error loading quiz state:", error);
+      }
+      return null;
+    },
+
+    // Clear quiz state from localStorage
+    clearSavedQuizState(_, { quizId, userId }) {
+      const key = `quizState_${quizId}_${userId || "guest"}`;
+      try {
+        localStorage.removeItem(key);
+        console.log("Cleared saved quiz state from localStorage:", key);
+      } catch (error) {
+        console.error("Error clearing saved quiz state:", error);
+      }
+    },
   },
+
   getters: {
     toasts: (state) => state.toasts,
     user: (state) => state.user,
     isDarkMode: (state) => state.isDarkMode,
     activeSection: (state) => state.activeSection,
-    getQuizState: (state) => state.quizState,
-    getQuizResults: (state) => state.quizResults,
+    getQuizState: (state) => state.quiz?.quizState || {},
+    getQuizResults: (state) => state.quiz?.quizResults || {},
+    // New getter to check if there are quiz results available
+    hasQuizResults: (state) => !!state.quiz?.quizResults,
   },
 });

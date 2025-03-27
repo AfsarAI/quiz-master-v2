@@ -1,11 +1,7 @@
 <template>
-  <div
-    class="results-container"
-    :class="{ 'dark-mode': isDarkMode }"
-    :data-bs-theme="isDarkMode ? 'dark' : 'light'"
-  >
+  <div class="results-container">
     <div class="results-page">
-      <div class="results-card">
+      <div class="results-card" v-if="results">
         <h1>Exam Results</h1>
 
         <div class="results-summary">
@@ -38,17 +34,16 @@
               <div
                 class="question-result"
                 :class="{
-                  correct:
-                    results.userAnswers[index] === question.correctAnswer,
+                  correct: results.userAnswers[index] === question.answer,
                   incorrect:
                     results.userAnswers[index] &&
-                    results.userAnswers[index] !== question.correctAnswer,
+                    results.userAnswers[index] !== question.answer,
                   unanswered: !results.userAnswers[index],
                 }"
               >
                 {{
                   results.userAnswers[index]
-                    ? results.userAnswers[index] === question.correctAnswer
+                    ? results.userAnswers[index] === question.answer
                       ? "Correct"
                       : "Incorrect"
                     : "Not Attempted"
@@ -56,7 +51,9 @@
               </div>
             </div>
 
-            <p class="question-text">{{ question.question }}</p>
+            <p class="question-text">
+              {{ question.question || question.question_text }}
+            </p>
 
             <div class="options-analysis">
               <div
@@ -65,7 +62,9 @@
                 class="option-item"
                 :class="{
                   'user-selected': results.userAnswers[index] === option,
-                  'correct-answer': option === question.correctAnswer,
+                  'correct-answer':
+                    question.answer === option ||
+                    question.correct_option === option,
                 }"
               >
                 <div class="option-marker">
@@ -77,16 +76,25 @@
           </div>
         </div>
 
-        <button @click="goToDashboard" class="btn-primary">
-          Back to Dashboard
-        </button>
+        <div class="action-buttons">
+          <button @click="goToDashboard" class="btn-primary">
+            Back to Dashboard
+          </button>
+          <button @click="restartExam" class="btn-secondary">
+            Restart Exam
+          </button>
+        </div>
+      </div>
+      <div v-else class="loading-container">
+        <div class="loading-spinner"></div>
+        <p>Loading results...</p>
       </div>
     </div>
   </div>
 </template>
 
 <script>
-import { ref, onMounted, watch } from "vue";
+import { ref, onMounted, onBeforeUnmount } from "vue";
 import { useRouter } from "vue-router";
 import { useRoute } from "vue-router";
 import { useStore } from "vuex";
@@ -98,8 +106,16 @@ export default {
     const route = useRoute();
     const store = useStore();
     const quizId = route.params.quiz_id;
+    const userId = ref(null);
+    const role = ref(null);
 
-    const isDarkMode = ref(false);
+    if (!store.state.user?.id) {
+      console.error("User ID not found. Please ensure the user is logged in.");
+    } else {
+      userId.value = store.state.user.id;
+    }
+
+    // Initialize with default values to prevent undefined errors
     const results = ref({
       quizId: "",
       quizTitle: "",
@@ -111,6 +127,44 @@ export default {
       timeTaken: 0,
     });
 
+    // Add this after the results ref declaration
+    const isNavigatingAway = ref(false);
+    const isLoading = ref(true);
+
+    // Local storage key for results
+    const getResultsStorageKey = () => {
+      return `quizResults_${quizId}`;
+    };
+
+    // Save results to local storage
+    const saveResultsToLocalStorage = (resultsData) => {
+      try {
+        localStorage.setItem(
+          getResultsStorageKey(),
+          JSON.stringify(resultsData)
+        );
+        console.log("Quiz results saved to localStorage");
+      } catch (error) {
+        console.error("Error saving quiz results to localStorage:", error);
+      }
+    };
+
+    // Load results from local storage
+    const loadResultsFromLocalStorage = () => {
+      try {
+        const savedResults = JSON.parse(
+          localStorage.getItem(getResultsStorageKey())
+        );
+        if (savedResults && savedResults.quizId === quizId) {
+          console.log("Found saved quiz results");
+          return savedResults;
+        }
+      } catch (error) {
+        console.error("Error loading quiz results from localStorage:", error);
+      }
+      return null;
+    };
+
     // Format time taken for display
     const formatTimeTaken = (seconds) => {
       const minutes = Math.floor(seconds / 60);
@@ -120,18 +174,82 @@ export default {
 
     // Go back to dashboard
     const goToDashboard = () => {
-      router.push("/dashboard");
+      // Set flag to prevent re-saving
+      isNavigatingAway.value = true;
+      // Clear results from local storage when navigating away
+      localStorage.removeItem(getResultsStorageKey());
+      // Clear from store as well
+      store.commit("clearQuizResults");
+      router.push({
+        path: `/quiz-master/user/${userId.value}/dashboard/quiz`,
+        replace: true,
+      });
     };
 
-    // Fetch results from API if not in store
+    // Restart the exam
+    const restartExam = () => {
+      // Set flag to prevent re-saving
+      isNavigatingAway.value = true;
+      // Clear any existing quiz state
+      localStorage.removeItem(getResultsStorageKey());
+
+      // Clear any existing quiz state in localStorage
+      const quizStateKey = `quizState_${quizId}_${
+        store.state.user?.id || "guest"
+      }`;
+      localStorage.removeItem(quizStateKey);
+
+      // Clear quiz state from store
+      store.commit("clearQuizState");
+      // Clear quiz results from store
+      store.commit("clearQuizResults");
+
+      // Navigate back to the quiz page
+      const routeRole = router.currentRoute.value.params.role;
+      const userRoles = store.state.user?.roles || [];
+
+      if (
+        Array.isArray(userRoles) &&
+        userRoles.map((r) => r.name).includes(routeRole)
+      ) {
+        role.value = routeRole;
+        const route = `/quiz-master/${role.value}/${userId.value}/dashboard/quiz/${quizId}/interface`;
+        router.push(route);
+      } else {
+        console.error("Role in route does not match any user roles.");
+      }
+    };
+
+    // Fetch results from API if not in store or local storage
     const fetchResults = async () => {
       try {
+        isLoading.value = true;
         const response = await fetch(
           `http://127.0.0.1:5000/api/user/dashboard/quiz/${quizId}/results`
         );
         if (response.ok) {
           const data = await response.json();
-          results.value = data;
+
+          // Log the data structure to debug
+          console.log("API response data:", data);
+
+          // Process the data to ensure it has the expected structure
+          const processedData = {
+            ...data,
+            questions: data.questions.map((q) => ({
+              ...q,
+              // Ensure both question and question_text are available
+              question: q.question || q.question_text,
+              question_text: q.question_text || q.question,
+              // Ensure both answer and correct_option are available
+              answer: q.answer || q.correct_option,
+              correct_option: q.correct_option || q.answer,
+            })),
+          };
+
+          results.value = processedData;
+          // Save fetched results to local storage
+          saveResultsToLocalStorage(processedData);
         } else {
           console.error("Failed to fetch quiz results");
           router.push("/dashboard");
@@ -139,52 +257,52 @@ export default {
       } catch (error) {
         console.error("Error fetching quiz results:", error);
         router.push("/dashboard");
+      } finally {
+        isLoading.value = false;
       }
     };
 
-    // Watch for dark mode changes from system or user preference
-    watch(
-      () => store.state.theme?.darkMode,
-      (newValue) => {
-        isDarkMode.value = newValue;
-      },
-      { immediate: true }
-    );
-
     onMounted(() => {
-      // Check if results are in the store
-      const storedResults = store.state.quiz?.quizResults;
-      if (storedResults && storedResults.quizId === quizId) {
-        results.value = storedResults;
-      } else {
-        // If not in store, fetch from API
-        fetchResults();
+      console.log("Component mounted, quizId:", quizId);
+
+      // First check if results are in local storage
+      const localResults = loadResultsFromLocalStorage();
+      if (localResults) {
+        console.log("Loaded quiz results from localStorage", localResults);
+        results.value = localResults;
+        isLoading.value = false;
+        return;
       }
 
-      // Check if dark mode is enabled in the store
-      if (
-        store.state.theme &&
-        typeof store.state.theme.darkMode !== "undefined"
-      ) {
-        isDarkMode.value = store.state.theme.darkMode;
+      // Then check if results are in the store
+      const storedResults = store.state.quiz?.quizResults;
+      console.log("Store results:", storedResults);
+
+      if (storedResults && storedResults.quizId === quizId) {
+        results.value = storedResults;
+        // Save to local storage for persistence
+        saveResultsToLocalStorage(storedResults);
+        isLoading.value = false;
       } else {
-        // Check system preference if store doesn't have the value
-        const prefersDark = window.matchMedia(
-          "(prefers-color-scheme: dark)"
-        ).matches;
-        isDarkMode.value = prefersDark;
-        // Set in store
-        if (store.state.theme) {
-          store.commit("theme/setDarkMode", prefersDark);
-        }
+        // If not in store or local storage, fetch from API
+        fetchResults();
+      }
+    });
+
+    // Save results to local storage when component is unmounted (but not when going to dashboard)
+    onBeforeUnmount(() => {
+      if (results.value.quizId && !isNavigatingAway.value) {
+        saveResultsToLocalStorage(results.value);
       }
     });
 
     return {
-      isDarkMode,
       results,
+      isLoading,
       formatTimeTaken,
       goToDashboard,
+      restartExam,
+      isNavigatingAway, // Add this to the returned object
     };
   },
 };
@@ -350,7 +468,15 @@ export default {
   flex: 1;
 }
 
-.btn-primary {
+.action-buttons {
+  display: flex;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.btn-primary,
+.btn-secondary {
+  flex: 1;
   background-color: #0d6efd;
   color: white;
   border: none;
@@ -359,12 +485,47 @@ export default {
   cursor: pointer;
   font-weight: bold;
   transition: all 0.2s ease;
-  display: block;
-  margin: 2rem auto 0;
 }
 
 .btn-primary:hover {
   background-color: #0b5ed7;
+}
+
+.btn-secondary {
+  background-color: #6c757d;
+}
+
+.btn-secondary:hover {
+  background-color: #5c636a;
+}
+
+/* Loading Styles */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 12px;
+  padding: 3rem;
+  width: 100%;
+  max-width: 400px;
+}
+
+.loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 5px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: #ffcd3c;
+  animation: spin 1s ease-in-out infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Responsive Design */
@@ -385,6 +546,10 @@ export default {
   .percentage,
   .time-taken {
     font-size: 1.5rem;
+  }
+
+  .action-buttons {
+    flex-direction: column;
   }
 }
 </style>

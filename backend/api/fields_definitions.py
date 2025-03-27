@@ -15,6 +15,15 @@ subjects_fields = {
     "chapters": fields.List(fields.Nested(chapters_fields))
 }
 
+questions_fields = {
+    "id": fields.Integer,
+    "question_text": fields.String,
+    "options": fields.List(fields.String, attribute=lambda x: [x.option1, x.option2, x.option3, x.option4]),
+    "correct_option": fields.String,
+    "subject_id": fields.Integer,
+    "chapter_id": fields.Integer,
+    "quiz_id": fields.Integer
+}
 
 quizzes_fields = {
     "id": fields.Integer,
@@ -23,9 +32,11 @@ quizzes_fields = {
     "quiz_type": fields.String,
     "subject_id": fields.Integer,
     "chapter_id": fields.Integer,
-    "date_created": fields.DateTime,
+    "date_created": fields.String(attribute=lambda x: x.date_created.strftime('%Y-%m-%d %H:%M:%S')),
     "duration": fields.Integer,
-    "questions": fields.List(fields.String)
+    "questions": fields.List(fields.Nested(questions_fields)),
+    "subject": fields.Nested(subjects_fields, allow_null=True),
+    "chapter": fields.Nested(chapters_fields, allow_null=True)
 }
 
 

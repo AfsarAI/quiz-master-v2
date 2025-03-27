@@ -43,7 +43,7 @@ class UserStatsResource(Resource):
             else:
                 break
 
-        streak_message = f"{streak} day streak" if streak > 0 else "1 day beyond"
+        streak_message = f"{streak} day" if streak > 0 else "-1 day"
 
         return {
             "user_stats_data": [
@@ -57,22 +57,21 @@ class UserStatsResource(Resource):
 
 class UpcomingQuizzesResource(Resource):
     # @auth_required()
+    @marshal_with(quizzes_fields)
     def get(self):
-        quizzes = Quiz.query.filter(Quiz.date_created >= datetime.now()).limit(3).all()
-        data = [{"id": quiz.id, "title": quiz.title, "subject": quiz.quiz_type, "date": str(quiz.date_created)} for quiz in quizzes]
-        return jsonify(data)
+        quizzes = Quiz.query.filter(Quiz.date_created <= datetime.now()).limit(3).all()
+        # data = [{"id": quiz.id, "title": quiz.title, "subject": quiz.quiz_type, "date": str(quiz.date_created)} for quiz in quizzes]
+        return quizzes, 200
 
 class UserSubjectsResource(Resource):
     # @auth_required()
+    @marshal_with(subjects_fields)
     def get(self, user_id):
         user = User.query.get(user_id)
-        
         if not user:
             return {"error": "User not found"}, 404
-
         subjects = user.subjects
-        data = [{"id": subject.id, "name": subject.name, "icon": "bi bi-book"} for subject in subjects]
-        return data, 200
+        return subjects, 200
 
 
 class QuizScoresResource(Resource):
@@ -88,10 +87,12 @@ class QuizScoresResource(Resource):
         return score_data, 200
 
 class UserAllQuizzesResource(Resource):
+    # @auth_required()
+    @marshal_with(quizzes_fields)
     def get(self):
         quizzes = Quiz.query.all()
-        data = [{"id": quiz.id, "title": quiz.title, "subject": quiz.quiz_type, "duration": quiz.duration} for quiz in quizzes]
-        return data, 200
+        # data = [{"id": quiz.id, "title": quiz.title, "subject": quiz.quiz_type, "duration": quiz.duration} for quiz in quizzes]
+        return quizzes, 200
     
 
 class UserQuizResource(Resource):
@@ -100,7 +101,7 @@ class UserQuizResource(Resource):
         
         if not quiz:
             return {"error": "Quiz not found"}, 404
-
+        
         questions = quiz.questions
         
         if not questions:
@@ -129,3 +130,64 @@ class UserQuizResource(Resource):
         }
         
         return data, 200
+
+
+class SubmitQuizResource(Resource):
+    def post(self, quiz_id):
+        data = request.get_json()
+        user_id = data.get('userId')
+
+        if not user_id:
+            return {"error": "User ID is required"}, 400
+
+        # Check if quiz exists
+        quiz = Quiz.query.get(quiz_id)
+        if not quiz:
+            return {"error": "Quiz not found"}, 404
+
+        # Check if it's a start request or a submit request
+        if 'startTime' in data:
+            # Start Quiz Logic
+            start_time = data.get('startTime')
+
+            # Check for an existing active attempt
+            existing_attempt = Score.query.filter_by(user_id=user_id, quiz_id=quiz_id, active=True).first()
+
+            if existing_attempt:
+                # Update existing attempt (Restart)
+                existing_attempt.attempt_date = datetime.fromisoformat(start_time)
+                existing_attempt.score = 0.0
+                existing_attempt.time_taken = 0
+                db.session.commit()
+                return {"message": "Quiz restarted successfully!", "score_id": existing_attempt.id}, 200
+
+            # Create new attempt
+            new_score = Score(
+                user_id=user_id,
+                quiz_id=quiz_id,
+                score=0.0,
+                time_taken=0,
+                attempt_date=datetime.fromisoformat(start_time),
+                active=True
+            )
+            db.session.add(new_score)
+            db.session.commit()
+            return {"message": "Quiz started successfully!", "score_id": new_score.id}, 201
+
+        elif 'score' in data:
+            # Submit Quiz Logic
+            score = data.get('score')
+            time_taken = data.get('timeTaken')
+
+            attempt = Score.query.filter_by(user_id=user_id, quiz_id=quiz_id, active=True).first()
+            if not attempt:
+                return {"error": "No active attempt found to submit"}, 404
+
+            # Update the score
+            attempt.score = score
+            attempt.time_taken = time_taken
+            attempt.active = False
+            db.session.commit()
+            return {"message": "Quiz submitted successfully!"}, 200
+
+        return {"error": "Invalid data provided"}, 400

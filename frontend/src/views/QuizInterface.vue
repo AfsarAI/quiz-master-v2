@@ -1,5 +1,5 @@
 <template>
-  <div class="quiz-container">
+  <div class="quiz-container" :class="{ 'dark-mode': isDarkMode }">
     <!-- Instructions Page -->
     <div v-if="!isQuizStarted" class="instructions-page">
       <div class="instructions-card">
@@ -7,8 +7,8 @@
         <div class="user-info">
           <div class="user-photo">
             <img
-              v-if="userProfile && userProfile.photo"
-              :src="userProfile.photo"
+              v-if="userProfile && userProfile.profile_url"
+              :src="userProfile.profile_url"
               alt="User Photo"
             />
             <div v-else class="avatar-placeholder">
@@ -16,7 +16,7 @@
             </div>
           </div>
           <div class="user-details">
-            <p><strong>Name:</strong> {{ userProfile?.name || "User" }}</p>
+            <p><strong>Name:</strong> {{ userProfile?.fullname || "User" }}</p>
             <p><strong>ID:</strong> {{ userProfile?.id || "N/A" }}</p>
             <p><strong>Duration:</strong> {{ quizData.duration }} minutes</p>
           </div>
@@ -64,12 +64,25 @@
               Your answers are automatically saved when you navigate to another
               question.
             </li>
+            <li v-if="hasInProgressQuiz" class="resume-notice">
+              You have an in-progress quiz. You can resume from where you left
+              off.
+            </li>
           </ul>
         </div>
 
-        <button @click="startQuiz" class="btn-primary start-btn">
-          Start Exam
-        </button>
+        <div class="start-buttons">
+          <button
+            v-if="hasInProgressQuiz"
+            @click="resumeQuiz"
+            class="btn-secondary resume-btn"
+          >
+            Resume Quiz
+          </button>
+          <button @click="startQuiz" class="btn-primary start-btn">
+            {{ hasInProgressQuiz ? "Restart Quiz" : "Start Exam" }}
+          </button>
+        </div>
       </div>
     </div>
 
@@ -127,7 +140,7 @@
           </div>
 
           <div class="question-content">
-            <p class="question-text">{{ currentQuestion.question }}</p>
+            <p class="question-text">{{ currentQuestion.question_text }}</p>
 
             <div class="options-list">
               <div
@@ -231,20 +244,26 @@ import { useStore } from "vuex";
 export default {
   name: "QuizPage",
   setup() {
+    // ===== SETUP AND INITIALIZATION =====
     const router = useRouter();
     const route = useRoute();
     const store = useStore();
     const quizId = route.params.quiz_id;
 
-    const userId = ref(null);
+    // Get user ID from store
+    const userId = computed(() => store.state.user?.id || "guest");
     const role = ref(null);
 
-    if (!store.state.user?.id) {
-      console.error("User ID not found. Please ensure the user is logged in.");
-    } else {
-      userId.value = store.state.user.id;
-    }
+    // Get dark mode from store
+    const isDarkMode = computed(() => store.getters.isDarkMode);
 
+    // Flag to track if there's an in-progress quiz
+    const hasInProgressQuiz = ref(false);
+
+    // Flag to prevent auto-saving during submission
+    const isSubmitting = ref(false);
+
+    // Quiz state variables
     const isQuizStarted = ref(false);
     const timeLeft = ref(0);
     const timeTaken = ref(0);
@@ -263,17 +282,18 @@ export default {
         "Your time will end automatically if the timer runs out.",
         "Questions marked for review will be highlighted in purple.",
         "You can change your answers any time before submitting the exam.",
+        "Your progress is automatically saved. If you leave, you can resume later.",
       ],
       questions: [
         {
-          question: "What is the capital of France?",
+          question_text: "What is the capital of France?",
           options: ["London", "Berlin", "Paris", "Madrid"],
-          correctAnswer: "Paris",
+          answer: "Paris",
         },
         {
           question: "Which planet is known as the Red Planet?",
           options: ["Venus", "Mars", "Jupiter", "Saturn"],
-          correctAnswer: "Mars",
+          answer: "Mars",
         },
         {
           question: "Who wrote 'Romeo and Juliet'?",
@@ -283,17 +303,17 @@ export default {
             "Jane Austen",
             "Mark Twain",
           ],
-          correctAnswer: "William Shakespeare",
+          answer: "William Shakespeare",
         },
         {
           question: "What is the chemical symbol for gold?",
           options: ["Go", "Gd", "Au", "Ag"],
-          correctAnswer: "Au",
+          answer: "Au",
         },
         {
           question: "Which country is home to the kangaroo?",
           options: ["New Zealand", "South Africa", "Australia", "Brazil"],
-          correctAnswer: "Australia",
+          answer: "Australia",
         },
       ],
     });
@@ -302,15 +322,9 @@ export default {
     const userAnswers = ref([]);
     const questionStatus = ref([]);
     const visitedQuestions = ref([]);
+    const currentQuestionIndex = ref(0);
 
-    // Initialize question status
-    const initializeQuestionStatus = () => {
-      questionStatus.value = Array(quizData.questions.length).fill(
-        "not-visited"
-      );
-      userAnswers.value = Array(quizData.questions.length).fill(null);
-      visitedQuestions.value = [];
-    };
+    // ===== COMPUTED PROPERTIES =====
 
     // Format time for display
     const formattedTime = computed(() => {
@@ -324,6 +338,17 @@ export default {
       return quizData.questions[currentQuestionIndex.value] || {};
     });
 
+    // ===== HELPER FUNCTIONS =====
+
+    // Initialize question status
+    const initializeQuestionStatus = () => {
+      questionStatus.value = Array(quizData.questions.length).fill(
+        "not-visited"
+      );
+      userAnswers.value = Array(quizData.questions.length).fill(null);
+      visitedQuestions.value = [];
+    };
+
     // Get user initials for avatar placeholder
     const getUserInitials = () => {
       if (userProfile.value && userProfile.value.name) {
@@ -336,47 +361,137 @@ export default {
       return "U";
     };
 
-    // Current question index
-    const currentQuestionIndex = ref(0);
+    // Generate a unique storage key for this quiz and user
+    const getStorageKey = () => {
+      return `quizState_${quizId}_${userId.value}`;
+    };
 
-    // Fetch user profile
-    const fetchUserProfile = async () => {
+    // ===== LOCAL STORAGE FUNCTIONS =====
+
+    // Save quiz state to localStorage
+    const saveQuizStateToLocalStorage = () => {
+      // Don't save if we're in the process of submitting
+      if (isSubmitting.value) {
+        console.log("Skipping save during submission");
+        return;
+      }
+
+      const stateToSave = {
+        quizId,
+        userId: userId.value,
+        isStarted: isQuizStarted.value,
+        currentQuestion: currentQuestionIndex.value,
+        userAnswers: userAnswers.value,
+        questionStatus: questionStatus.value,
+        visitedQuestions: visitedQuestions.value,
+        timeLeft: timeLeft.value,
+        timeTaken: timeTaken.value,
+        timestamp: new Date().getTime(),
+        duration: quizData.duration,
+      };
+
       try {
-        const response = await fetch("http://127.0.0.1:5000/api/user/profile");
-        if (response.ok) {
-          userProfile.value = await response.json();
-        }
+        localStorage.setItem(getStorageKey(), JSON.stringify(stateToSave));
+        console.log("Quiz state saved to localStorage");
+
+        // Also update the Vuex store
+        store.dispatch("saveQuizState", stateToSave);
       } catch (error) {
-        console.error("Failed to fetch user profile:", error);
-        // Set default profile if fetch fails
-        userProfile.value = {
-          name: "Test User",
-          id: "TEST123",
-          photo: null,
-        };
+        console.error("Error saving quiz state to localStorage:", error);
       }
     };
 
-    // Fetch quiz data from API
-    const fetchQuizData = async () => {
+    // Load quiz state from localStorage
+    const loadQuizStateFromLocalStorage = () => {
       try {
-        const response = await fetch();
-        `http://127.0.0.1:5000/api/user/dashboard/quiz/${quizId}/quiz-data`;
-        if (!response.ok) {
-          throw new Error("Failed to fetch quiz data");
-        }
-        const data = await response.json();
-        quizData.title = data.title;
-        quizData.duration = data.duration;
-        quizData.instructions = data.instructions;
-        quizData.questions = data.questions;
+        const savedState = JSON.parse(localStorage.getItem(getStorageKey()));
 
-        // Initialize after fetching data
-        initializeQuestionStatus();
+        if (savedState && savedState.quizId === quizId) {
+          console.log("Found saved quiz state");
+
+          // Check if the saved state is still valid (not expired)
+          const currentTime = new Date().getTime();
+          const savedTime = savedState.timestamp;
+          const elapsedSeconds = Math.floor((currentTime - savedTime) / 1000);
+
+          // If the elapsed time is less than the quiz duration, the quiz is still valid
+          if (elapsedSeconds < savedState.duration * 60) {
+            hasInProgressQuiz.value = true;
+            return savedState;
+          } else {
+            console.log("Saved quiz state has expired. Starting fresh.");
+            localStorage.removeItem(getStorageKey());
+          }
+        }
       } catch (error) {
-        console.error("Failed to fetch quiz data:", error);
-        // Initialize with mock data if fetch fails
-        initializeQuestionStatus();
+        console.error("Error loading quiz state from localStorage:", error);
+      }
+
+      return null;
+    };
+
+    // ===== QUIZ CONTROL FUNCTIONS =====
+
+    // Start the timer
+    const startTimer = () => {
+      // Clear any existing timer
+      if (timer) {
+        clearInterval(timer);
+      }
+
+      timer = setInterval(() => {
+        if (timeLeft.value > 0) {
+          timeLeft.value--;
+          timeTaken.value++;
+
+          // Save state every 10 seconds
+          if (timeLeft.value % 10 === 0) {
+            saveQuizStateToLocalStorage();
+          }
+        } else {
+          clearInterval(timer);
+          alert("Time is up! Submitting your exam automatically.");
+          submitExam();
+        }
+      }, 1000);
+    };
+
+    // Resume quiz from saved state
+    const resumeQuiz = () => {
+      const savedState = loadQuizStateFromLocalStorage();
+
+      if (savedState) {
+        isQuizStarted.value = true;
+        currentQuestionIndex.value = savedState.currentQuestion;
+        userAnswers.value = savedState.userAnswers;
+        questionStatus.value = savedState.questionStatus;
+        visitedQuestions.value = savedState.visitedQuestions || [];
+
+        // Calculate remaining time
+        const currentTime = new Date().getTime();
+        const savedTime = savedState.timestamp;
+        const elapsedSeconds = Math.floor((currentTime - savedTime) / 1000);
+
+        // Adjust timeLeft based on elapsed time since the quiz was saved
+        timeLeft.value = Math.max(0, savedState.timeLeft - elapsedSeconds);
+        timeTaken.value = savedState.timeTaken + elapsedSeconds;
+
+        // Start timer
+        startTimer();
+
+        // Update store
+        store.dispatch("saveQuizState", {
+          quizId,
+          isStarted: isQuizStarted.value,
+          currentQuestion: currentQuestionIndex.value,
+          userAnswers: userAnswers.value,
+          questionStatus: questionStatus.value,
+          timeLeft: timeLeft.value,
+          timeTaken: timeTaken.value,
+        });
+      } else {
+        // If no valid saved state, start a new quiz
+        startQuiz();
       }
     };
 
@@ -385,7 +500,7 @@ export default {
       try {
         // Record quiz start in database
         const response = await fetch(
-          `http://127.0.0.1:5000/api/user/dashboard/quiz/${quizId}/start`,
+          `http://127.0.0.1:5000/api/user/dashboard/quiz/${quizId}/submit`,
           {
             method: "POST",
             headers: {
@@ -393,7 +508,7 @@ export default {
             },
             body: JSON.stringify({
               quizId,
-              userId: userProfile.value?.id || "user123",
+              userId: userId.value,
               startTime: new Date().toISOString(),
             }),
           }
@@ -406,35 +521,29 @@ export default {
         console.error("Error recording quiz start:", error);
       }
 
+      // Clear any existing saved state
+      localStorage.removeItem(getStorageKey());
+      store.dispatch("clearSavedQuizState", { quizId, userId: userId.value });
+
+      // Initialize quiz state
       isQuizStarted.value = true;
       timeLeft.value = quizData.duration * 60;
+      timeTaken.value = 0;
+      initializeQuestionStatus();
+      currentQuestionIndex.value = 0;
 
       // Mark first question as current
       questionStatus.value[0] = "current";
-      visitedQuestions.value.push(0);
+      visitedQuestions.value = [0];
 
       // Start timer
-      timer = setInterval(() => {
-        if (timeLeft.value > 0) {
-          timeLeft.value--;
-          timeTaken.value = quizData.duration * 60 - timeLeft.value;
-        } else {
-          clearInterval(timer);
-          alert("Time is up! Submitting your exam automatically.");
-          submitExam();
-        }
-      }, 1000);
+      startTimer();
 
-      // Save quiz state to Vuex store
-      store.commit("setQuizState", {
-        quizId,
-        isStarted: true,
-        currentQuestion: 0,
-        userAnswers: userAnswers.value,
-        questionStatus: questionStatus.value,
-        timeLeft: timeLeft.value,
-      });
+      // Save initial state
+      saveQuizStateToLocalStorage();
     };
+
+    // ===== QUESTION NAVIGATION AND INTERACTION =====
 
     // Navigate to a specific question
     const goToQuestion = (index) => {
@@ -452,8 +561,8 @@ export default {
       // Update status of new current question
       questionStatus.value[index] = "current";
 
-      // Update store
-      updateStore();
+      // Save state
+      saveQuizStateToLocalStorage();
     };
 
     // Update status of current question based on answer
@@ -475,13 +584,13 @@ export default {
     // Select an option for the current question
     const selectOption = (option) => {
       userAnswers.value[currentQuestionIndex.value] = option;
-      updateStore();
+      saveQuizStateToLocalStorage();
     };
 
     // Clear response for current question
     const clearResponse = () => {
       userAnswers.value[currentQuestionIndex.value] = null;
-      updateStore();
+      saveQuizStateToLocalStorage();
     };
 
     // Save answer and go to next question
@@ -496,7 +605,7 @@ export default {
         }
 
         questionStatus.value[currentQuestionIndex.value] = "current";
-        updateStore();
+        saveQuizStateToLocalStorage();
       }
     };
 
@@ -506,7 +615,7 @@ export default {
         updateCurrentQuestionStatus();
         currentQuestionIndex.value--;
         questionStatus.value[currentQuestionIndex.value] = "current";
-        updateStore();
+        saveQuizStateToLocalStorage();
       }
     };
 
@@ -519,8 +628,10 @@ export default {
             ? "answered"
             : "not-answered"
           : "marked";
-      updateStore();
+      saveQuizStateToLocalStorage();
     };
+
+    // ===== QUESTION STATUS HELPERS =====
 
     // Get CSS class for question number based on status
     const getQuestionStatusClass = (index) => {
@@ -536,18 +647,61 @@ export default {
       return questionStatus.value.filter((s) => s === status).length;
     };
 
-    // Update Vuex store with current state
-    const updateStore = () => {
-      store.commit("setQuizState", {
-        quizId,
-        isStarted: isQuizStarted.value,
-        currentQuestion: currentQuestionIndex.value,
-        userAnswers: userAnswers.value,
-        questionStatus: questionStatus.value,
-        timeLeft: timeLeft.value,
-        timeTaken: timeTaken.value,
-      });
+    // ===== API CALLS =====
+
+    // Fetch user profile
+    const fetchUserProfile = async () => {
+      try {
+        const response = await fetch(
+          `http://127.0.0.1:5000/api/user/${userId.value}/data`
+        );
+        if (response.ok) {
+          userProfile.value = await response.json();
+        }
+      } catch (error) {
+        console.error("Failed to fetch user profile:", error);
+        // Set default profile if fetch fails
+        userProfile.value = {
+          name: "Test User",
+          id: "TEST123",
+          photo: null,
+        };
+      }
     };
+
+    // Fetch quiz data from API
+    const fetchQuizData = async () => {
+      try {
+        const response = await fetch(
+          `http://127.0.0.1:5000/api/user/dashboard/quiz/${quizId}/quiz-data`
+        );
+        if (!response.ok) {
+          throw new Error("Failed to fetch quiz data");
+        }
+        const data = await response.json();
+        quizData.title = data.title;
+        quizData.duration = data.duration;
+        quizData.instructions = data.instructions;
+        quizData.questions = data.questions;
+
+        // Initialize after fetching data
+        initializeQuestionStatus();
+
+        // Check if there's a saved state
+        const savedState = loadQuizStateFromLocalStorage();
+        hasInProgressQuiz.value = !!savedState;
+      } catch (error) {
+        console.error("Failed to fetch quiz data:", error);
+        // Initialize with mock data if fetch fails
+        initializeQuestionStatus();
+
+        // Still check for saved state with mock data
+        const savedState = loadQuizStateFromLocalStorage();
+        hasInProgressQuiz.value = !!savedState;
+      }
+    };
+
+    // ===== QUIZ SUBMISSION =====
 
     // Confirm before submitting
     const confirmSubmit = () => {
@@ -567,14 +721,28 @@ export default {
 
     // Submit the exam
     const submitExam = async () => {
+      // Set submitting flag to prevent auto-saving
+      isSubmitting.value = true;
+
+      // Stop the timer
       clearInterval(timer);
 
       // Calculate score
       const score = userAnswers.value.reduce((total, answer, index) => {
-        return (
-          total + (answer === quizData.questions[index].correctAnswer ? 1 : 0)
-        );
+        return total + (answer === quizData.questions[index].answer ? 1 : 0);
       }, 0);
+
+      // Prepare results object
+      const resultsData = {
+        quizId,
+        quizTitle: quizData.title,
+        questions: quizData.questions,
+        userAnswers: userAnswers.value,
+        score: score,
+        totalScore: quizData.questions.length,
+        percentage: Math.round((score / quizData.questions.length) * 100),
+        timeTaken: timeTaken.value,
+      };
 
       try {
         // Submit results to backend
@@ -587,7 +755,7 @@ export default {
             },
             body: JSON.stringify({
               quizId,
-              userId: userProfile.value?.id || "user123",
+              userId: userId.value,
               answers: userAnswers.value,
               score: score,
               totalScore: quizData.questions.length,
@@ -605,18 +773,16 @@ export default {
       }
 
       // Save results to Vuex store for the results page
-      store.commit("setQuizResults", {
-        quizId,
-        quizTitle: quizData.title,
-        questions: quizData.questions,
-        userAnswers: userAnswers.value,
-        score: score,
-        totalScore: quizData.questions.length,
-        percentage: Math.round((score / quizData.questions.length) * 100),
-        timeTaken: timeTaken.value,
-      });
+      store.dispatch("saveQuizResults", resultsData);
 
-      // Clear quiz state
+      // Save results to local storage for persistence
+      const resultsStorageKey = `quizResults_${quizId}`;
+      localStorage.setItem(resultsStorageKey, JSON.stringify(resultsData));
+
+      // Clear quiz state from localStorage
+      localStorage.removeItem(getStorageKey());
+
+      // Clear quiz state from store
       store.commit("clearQuizState");
 
       // Redirect to results page
@@ -632,47 +798,42 @@ export default {
         router.push(route);
       } else {
         console.error("Role in route does not match any user roles.");
+        // Fallback route if role doesn't match
+        router.push(`/dashboard/quiz/${quizId}/result`);
       }
     };
 
-    // Lifecycle hooks
+    // ===== LIFECYCLE HOOKS =====
+
     onMounted(() => {
       fetchUserProfile();
       fetchQuizData();
 
-      // Check if there's a saved state in the store
-      const savedState = store.state.quiz?.quizState;
-      if (savedState && savedState.quizId === quizId) {
-        isQuizStarted.value = savedState.isStarted;
-        currentQuestionIndex.value = savedState.currentQuestion;
-        userAnswers.value = savedState.userAnswers;
-        questionStatus.value = savedState.questionStatus;
-        timeLeft.value = savedState.timeLeft;
-        timeTaken.value = savedState.timeTaken || 0;
-
-        // Restart timer if quiz was in progress
-        if (isQuizStarted.value && timeLeft.value > 0) {
-          timer = setInterval(() => {
-            if (timeLeft.value > 0) {
-              timeLeft.value--;
-              timeTaken.value = quizData.duration * 60 - timeLeft.value;
-            } else {
-              clearInterval(timer);
-              submitExam();
-            }
-          }, 1000);
+      // Set up window beforeunload event to save state when user leaves
+      window.addEventListener("beforeunload", () => {
+        if (isQuizStarted.value && timeLeft.value > 0 && !isSubmitting.value) {
+          saveQuizStateToLocalStorage();
         }
-      }
+      });
     });
 
     onBeforeUnmount(() => {
       if (timer) {
         clearInterval(timer);
       }
+
+      // Save state when component is unmounted
+      if (isQuizStarted.value && timeLeft.value > 0 && !isSubmitting.value) {
+        saveQuizStateToLocalStorage();
+      }
+
+      // Remove beforeunload event listener
+      window.removeEventListener("beforeunload", () => {});
     });
 
     return {
       isQuizStarted,
+      isDarkMode,
       quizData,
       userProfile,
       userAnswers,
@@ -681,8 +842,10 @@ export default {
       questionStatus,
       formattedTime,
       timeLeft,
+      hasInProgressQuiz,
       getUserInitials,
       startQuiz,
+      resumeQuiz,
       goToQuestion,
       selectOption,
       clearResponse,
@@ -803,6 +966,12 @@ export default {
   margin-bottom: 0.75rem;
 }
 
+.resume-notice {
+  color: #ffcd3c;
+  font-weight: bold;
+  margin-top: 1rem;
+}
+
 .legend {
   display: flex;
   flex-wrap: wrap;
@@ -847,13 +1016,24 @@ export default {
   background-color: #6f42c1;
 }
 
+.start-buttons {
+  display: flex;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
 .start-btn {
-  display: block;
-  width: 100%;
+  flex: 1;
   padding: 1rem;
   font-size: 1.25rem;
   font-weight: bold;
-  margin-top: 2rem;
+}
+
+.resume-btn {
+  flex: 1;
+  padding: 1rem;
+  font-size: 1.25rem;
+  font-weight: bold;
 }
 
 /* Exam Interface */
@@ -1232,6 +1412,10 @@ export default {
 
   .question-area {
     height: auto;
+  }
+
+  .start-buttons {
+    flex-direction: column;
   }
 }
 

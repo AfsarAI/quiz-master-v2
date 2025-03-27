@@ -366,8 +366,11 @@ import AppFooter from "@/components/Footer.vue";
 
 import { ref, computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
+import { useStore } from "vuex";
 
 const router = useRouter();
+const store = useStore();
+
 const fullname = ref("");
 const email = ref("");
 const password = ref("");
@@ -480,8 +483,13 @@ const register = async () => {
     const data = await response.json();
     console.log(data);
     // Handle successful registration (e.g., show success message, redirect)
-    alert("Registration successful!"); // Replace with a more user-friendly notification
-    router.push("/login"); // Redirect to login page after successful registration
+
+    store.dispatch("addToast", {
+      message: "Registration successful! Please login to continue.",
+      type: "success",
+    });
+
+    router.push("/quiz-master/login"); // Redirect to login page after successful registration
   } catch (error) {
     console.error("Error during registration:", error);
     alert("Registration failed. Please try again."); // Replace with a more user-friendly error handling

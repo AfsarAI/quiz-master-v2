@@ -24,7 +24,7 @@ class UserResource(Resource):
 
 class UserByIDResource(Resource):
     @marshal_with(user_fields)
-    @auth_required('token')
+    # @auth_required('token')
     def get(self, user_id):
         user = User.query.get(user_id)
         return user

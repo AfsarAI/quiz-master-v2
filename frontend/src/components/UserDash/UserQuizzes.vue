@@ -15,13 +15,32 @@
           <div class="card quiz-card h-100">
             <div class="card-body d-flex flex-column">
               <h5 class="card-title">{{ quiz.title }}</h5>
-              <p class="card-text text-muted">Subject: {{ quiz.subject }}</p>
-              <span class="badge bg-info mb-1"
-                >Questions: {{ quiz.questions }}</span
+              <p class="card-text text-muted">
+                <strong>Quiz Type:</strong> {{ quiz.quiz_type }}
+              </p>
+              <p class="card-text text-muted">
+                <strong>Subject:</strong> {{ quiz.subject?.name || "N/A" }}
+              </p>
+              <p class="card-text text-muted">
+                <strong>Chapter:</strong> {{ quiz.chapter?.name || "N/A" }}
+              </p>
+              <div
+                class="d-flex justify-content-center align-items-center gap-3 my-2"
               >
-              <span class="badge bg-info mb-3"
-                >Duration: {{ quiz.duration }} minutes</span
-              >
+                <span
+                  class="badge bg-info text-muted rounded-pill px-3 py-1 d-flex align-items-center"
+                >
+                  <i class="bi bi-question-circle me-1"></i>
+                  Questions: {{ quiz.questions.length }}
+                </span>
+                <span
+                  class="badge bg-warning text-muted rounded-pill px-3 py-1 d-flex align-items-center"
+                >
+                  <i class="bi bi-clock me-1"></i>
+                  Duration: {{ quiz.duration }} minutes
+                </span>
+              </div>
+
               <button
                 class="btn btn-primary mt-auto"
                 @click="navigateToQuiz(quiz.id)"
