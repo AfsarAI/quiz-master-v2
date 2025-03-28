@@ -124,7 +124,7 @@ class AddQuizResource(Resource):
         print(data)
         
         # Pehle Quiz create karo
-        new_quiz = Quiz(title=data['title'], quiz_type=data['quiz_type'], subject_id=data['subjectId'], chapter_id=data['chapterId'], duration=10)
+        new_quiz = Quiz(title=data['title'], quiz_type=data['quizType'], subject_id=data['subjectId'], chapter_id=data['chapterId'], duration=10)
         db.session.add(new_quiz)
         db.session.flush()  # Taake id mil sake bina commit kiye
 

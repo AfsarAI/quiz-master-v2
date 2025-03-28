@@ -279,7 +279,7 @@ def add_random_questions(quiz_id, count):
         ]
         
         # Randomly select correct option
-        correct_option = random.choice(["option1", "option2", "option3", "option4"])
+        correct_option = random.randint(0, 3)
         
         question = Question(
             quiz_id=quiz_id,
@@ -320,7 +320,7 @@ def add_subject_questions(quiz_id, subject_id, count):
         ]
         
         # Randomly select correct option
-        correct_option = random.choice(["option1", "option2", "option3", "option4"])
+        correct_option = random.randint(0, 3)
         
         question = Question(
             quiz_id=quiz_id,
@@ -365,7 +365,7 @@ def add_chapter_questions(quiz_id, subject_id, chapter_id, count):
         ]
         
         # Randomly select correct option
-        correct_option = random.choice(["option1", "option2", "option3", "option4"])
+        correct_option = random.randint(0, 3)
         
         question = Question(
             quiz_id=quiz_id,

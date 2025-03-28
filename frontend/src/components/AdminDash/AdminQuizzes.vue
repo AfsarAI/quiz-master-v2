@@ -347,6 +347,8 @@ const submitQuizForm = async () => {
       body: JSON.stringify({
         title: quizForm.title,
         quizType: quizForm.quizType,
+        subjectId: quizForm.subjectId,
+        chapterId: quizForm.chapterId,
         questions: quizForm.questions,
       }),
     });

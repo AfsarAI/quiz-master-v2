@@ -1,12 +1,11 @@
-from flask import jsonify, request
+from flask import request, send_from_directory
 from flask_restful import Resource, marshal_with
-from flask_security import auth_required
-from models import Chapter, Qualification, Question, Quiz, RecentActivity, Subject, User, Score
+from tasks import create_csv_file
+from models import Quiz, RecentActivity, User, Score
 from datetime import datetime, timedelta
-from sqlalchemy import func
-
+from celery.result import AsyncResult
 from models import db, User, Score
-from .fields_definitions import activity_fields, qual_fields, score_fields, subjects_fields, user_fields, quizzes_fields, chapters_fields
+from .fields_definitions import score_fields, subjects_fields, quizzes_fields
 
 
 class UserStatsResource(Resource):
@@ -75,61 +74,31 @@ class UserSubjectsResource(Resource):
 
 
 class QuizScoresResource(Resource):
-    # @auth_required()
+    @marshal_with(score_fields)
     def get(self, user_id):
-        user = User.query.get(user_id)
-        
-        if not user:
-            return {"error": "User not found"}, 404
+        user_scores = Score.query.filter_by(user_id=user_id).order_by(Score.attempt_date.asc()).all()
+        if not user_scores:
+            return {"message": "No scores available"}, 404
+        return user_scores, 200
 
-        scores = Score.query.filter_by(user_id=user.id).order_by(Score.attempt_date.desc()).limit(6).all()
-        score_data = [score.score for score in scores]
-        return score_data, 200
 
 class UserAllQuizzesResource(Resource):
     # @auth_required()
     @marshal_with(quizzes_fields)
     def get(self):
         quizzes = Quiz.query.all()
-        # data = [{"id": quiz.id, "title": quiz.title, "subject": quiz.quiz_type, "duration": quiz.duration} for quiz in quizzes]
         return quizzes, 200
     
 
 class UserQuizResource(Resource):
+    @marshal_with(quizzes_fields)
     def get(self, quiz_id):
         quiz = Quiz.query.get(quiz_id)
         
         if not quiz:
             return {"error": "Quiz not found"}, 404
         
-        questions = quiz.questions
-        
-        if not questions:
-            return {"error": "No questions available for this quiz"}, 404
-        
-        data = {
-            "quiz_id": quiz.id,
-            "title": quiz.title,
-            "quiz_type": quiz.quiz_type,
-            "duration": quiz.duration,
-            "date_created": quiz.date_created.strftime('%Y-%m-%d %H:%M:%S'),
-            "questions": [
-                {
-                    "id": question.id,
-                    "question": question.question_text,
-                    "options": [
-                        question.option1,
-                        question.option2,
-                        question.option3,
-                        question.option4
-                    ],
-                    "answer": question.correct_option,
-                }
-                for question in questions
-            ]
-        }
-        
-        return data, 200
+        return quiz, 200
 
 
 class SubmitQuizResource(Resource):
@@ -191,3 +160,26 @@ class SubmitQuizResource(Resource):
             return {"message": "Quiz submitted successfully!"}, 200
 
         return {"error": "Invalid data provided"}, 400
+
+
+class TaskCSVResource(Resource):
+    def get(self, user_id):
+        task = create_csv_file.delay(user_id)
+        return {"task_id": task.id, "message": "CSV generation started"}, 200
+
+    
+class TaskStatusResource(Resource):
+    def get(self, task_id):
+        task = AsyncResult(task_id)
+        
+        if not task:
+            return {"error": "Invalid Task ID"}, 404
+        
+        # Check task status
+        if task.state == 'SUCCESS':
+            csv_filename = task.result
+            return send_from_directory('csv', csv_filename, as_attachment=True)
+        elif task.state == 'FAILURE':
+            return {"task_status": task.state, "error": str(task.info)}, 500
+        else:
+            return {"task_status": task.state}, 200

@@ -2,7 +2,7 @@
 from flask_restful import Api
 
 from .admin_api import AddQualificationResource, AddQuizResource, AddSubjectResource, AdminAllQuizzesResource, AdminStatsResource, AllChaptersResource, AllQualificationsResource, AllRecentActivityResource, AllSubjectsResource, AddChapterResource, AllUsersResource, RecentActivityResource, TopScorersResource
-from .user_api import QuizScoresResource, SubmitQuizResource, UpcomingQuizzesResource, UserAllQuizzesResource, UserQuizResource, UserStatsResource, UserSubjectsResource
+from .user_api import QuizScoresResource, SubmitQuizResource, TaskCSVResource, TaskStatusResource, UpcomingQuizzesResource, UserAllQuizzesResource, UserQuizResource, UserStatsResource, UserSubjectsResource
 from .auth_api import UserByIDResource, UserRegisterResource, UserLoginResource
 from .subject_api import SubjectResource, SubjectsWithQualificationResource
 from .qual_api import QualificationResource, QualificationSubjectResource
@@ -46,3 +46,5 @@ api.add_resource(QuizScoresResource, '/user/dashboard/<int:user_id>/quiz-scores'
 api.add_resource(UserAllQuizzesResource, '/user/dashboard/all/quizzes', methods=['GET'])
 api.add_resource(UserQuizResource, '/user/dashboard/quiz/<int:quiz_id>/quiz-data', methods=['GET'])
 api.add_resource(SubmitQuizResource, '/user/dashboard/quiz/<int:quiz_id>/submit', methods=['POST'])
+api.add_resource(TaskCSVResource, '/user/dashboard/task/csv-export/<int:user_id>', methods=['GET'])
+api.add_resource(TaskStatusResource, '/user/dashboard/task/csv-download/<task_id>', methods=['GET'])

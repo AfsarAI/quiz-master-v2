@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Monthly Quiz Report</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        color: #333;
+        margin: 0;
+        padding: 20px;
+      }
+      h1 {
+        color: #4caf50;
+        text-align: center;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+      }
+      th,
+      td {
+        border: 1px solid #ccc;
+        padding: 8px;
+        text-align: center;
+      }
+      th {
+        background-color: #4caf50;
+        color: white;
+      }
+      tr:nth-child(even) {
+        background-color: #f2f2f2;
+      }
+      .summary {
+        margin-top: 20px;
+        background-color: #e7f7e7;
+        padding: 20px;
+        border-radius: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Your Monthly Activity Report - {{ month }}</h1>
+    <p>
+      Hello <b>{{ user_name }}</b>, here’s a summary of your quiz activities for
+      this month.
+    </p>
+
+    <div class="summary">
+      <h3>📊 Monthly Summary</h3>
+      <p>
+        You attempted <b>{{ quizzes|length }}</b> quizzes this month. Check your
+        progress below!
+      </p>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Quiz Title</th>
+          <th>Date Attempted</th>
+          <th>Your Score</th>
+          <th>Average Score</th>
+          <th>Your Rank</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for quiz in quizzes %}
+        <tr>
+          <td>{{ quiz.title }}</td>
+          <td>{{ quiz.date_attempted }}</td>
+          <td>{{ quiz.score }}</td>
+          <td>{{ quiz.average_score }}</td>
+          <td>{{ quiz.rank }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <p style="text-align: center; margin-top: 30px">
+      Keep Learning and Improving! 🚀
+    </p>
+  </body>
+</html>

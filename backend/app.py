@@ -3,7 +3,8 @@ from config import LocalDevelopmentConfig
 from models import db, User, Role
 from flask_security import Security, SQLAlchemyUserDatastore
 from flask_cors import CORS
-
+from celery_init import celery_init_app
+from celery.schedules import crontab
 
 app = None
 def create_app():
@@ -24,10 +25,19 @@ def create_app():
     return app
 
 app = create_app()
+celery = celery_init_app(app)
+celery.autodiscover_tasks()
 
+@celery.on_after_finalize.connect 
+def setup_periodic_tasks(sender, **kwargs):
+    sender.add_periodic_task(
+        crontab(minute = '*/2'),
+        tasks.monthly_report.s(),
+    )
 
 import initial_data
 import base_route as routes
+import tasks
 
 #for try!
 if __name__ == '__main__':

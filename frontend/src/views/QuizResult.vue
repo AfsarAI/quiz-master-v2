@@ -34,16 +34,21 @@
               <div
                 class="question-result"
                 :class="{
-                  correct: results.userAnswers[index] === question.answer,
+                  correct:
+                    results.userAnswers[index] === question.correct_option,
                   incorrect:
-                    results.userAnswers[index] &&
-                    results.userAnswers[index] !== question.answer,
-                  unanswered: !results.userAnswers[index],
+                    results.userAnswers[index] !== null &&
+                    results.userAnswers[index] !== undefined &&
+                    results.userAnswers[index] !== question.correct_option,
+                  unanswered:
+                    results.userAnswers[index] === null ||
+                    results.userAnswers[index] === undefined,
                 }"
               >
                 {{
-                  results.userAnswers[index]
-                    ? results.userAnswers[index] === question.answer
+                  results.userAnswers[index] !== null &&
+                  results.userAnswers[index] !== undefined
+                    ? results.userAnswers[index] === question.correct_option
                       ? "Correct"
                       : "Incorrect"
                     : "Not Attempted"
@@ -52,7 +57,7 @@
             </div>
 
             <p class="question-text">
-              {{ question.question || question.question_text }}
+              {{ question.question_text || question.question }}
             </p>
 
             <div class="options-analysis">
@@ -61,10 +66,11 @@
                 :key="optIndex"
                 class="option-item"
                 :class="{
-                  'user-selected': results.userAnswers[index] === option,
-                  'correct-answer':
-                    question.answer === option ||
-                    question.correct_option === option,
+                  'user-selected': results.userAnswers[index] === optIndex,
+                  'correct-answer': question.correct_option === optIndex,
+                  'incorrect-answer':
+                    results.userAnswers[index] === optIndex &&
+                    question.correct_option !== optIndex,
                 }"
               >
                 <div class="option-marker">
@@ -220,48 +226,6 @@ export default {
       }
     };
 
-    // Fetch results from API if not in store or local storage
-    const fetchResults = async () => {
-      try {
-        isLoading.value = true;
-        const response = await fetch(
-          `http://127.0.0.1:5000/api/user/dashboard/quiz/${quizId}/results`
-        );
-        if (response.ok) {
-          const data = await response.json();
-
-          // Log the data structure to debug
-          console.log("API response data:", data);
-
-          // Process the data to ensure it has the expected structure
-          const processedData = {
-            ...data,
-            questions: data.questions.map((q) => ({
-              ...q,
-              // Ensure both question and question_text are available
-              question: q.question || q.question_text,
-              question_text: q.question_text || q.question,
-              // Ensure both answer and correct_option are available
-              answer: q.answer || q.correct_option,
-              correct_option: q.correct_option || q.answer,
-            })),
-          };
-
-          results.value = processedData;
-          // Save fetched results to local storage
-          saveResultsToLocalStorage(processedData);
-        } else {
-          console.error("Failed to fetch quiz results");
-          router.push("/dashboard");
-        }
-      } catch (error) {
-        console.error("Error fetching quiz results:", error);
-        router.push("/dashboard");
-      } finally {
-        isLoading.value = false;
-      }
-    };
-
     onMounted(() => {
       console.log("Component mounted, quizId:", quizId);
 
@@ -284,8 +248,9 @@ export default {
         saveResultsToLocalStorage(storedResults);
         isLoading.value = false;
       } else {
-        // If not in store or local storage, fetch from API
-        fetchResults();
+        console.error("No results found in store or localStorage");
+        goToDashboard();
+        isLoading.value = false;
       }
     });
 
@@ -446,6 +411,11 @@ export default {
 .option-item.correct-answer {
   border: 2px solid #198754;
   background: rgba(25, 135, 84, 0.2);
+}
+
+.option-item.incorrect-answer {
+  border: 2px solid #dc3545;
+  background: rgba(220, 53, 69, 0.2);
 }
 
 .option-item.user-selected.correct-answer {

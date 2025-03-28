@@ -116,7 +116,7 @@ class Question(db.Model):
     option2 = db.Column(db.String(255), nullable=False)
     option3 = db.Column(db.String(255), nullable=False)
     option4 = db.Column(db.String(255), nullable=False)
-    correct_option = db.Column(db.String(10), nullable=False)
+    correct_option = db.Column(db.Integer, nullable=False)
 
 
 # Score Model

@@ -24,7 +24,7 @@
       <div class="col-md-6">
         <div class="card h-100">
           <div class="card-header bg-primary text-white">
-            <h5 class="mb-0">Upcoming Quizzes</h5>
+            <h5 class="mb-0">Recently Added Top 3 Quizzes</h5>
           </div>
           <div class="card-body">
             <ul
@@ -52,29 +52,40 @@
 
       <div class="col-md-6">
         <div class="card h-100">
-          <div class="card-header bg-success text-white">
-            <h5 class="mb-0">All Subjects</h5>
+          <div
+            class="card-header bg-success text-white d-flex justify-content-between align-items-center"
+          >
+            <h5 class="mb-0">All Given Quizzes</h5>
+
+            <!-- Download Button with Tooltip -->
+            <button
+              class="btn btn-light btn-sm"
+              @click="downloadCSV"
+              data-bs-toggle="tooltip"
+              data-bs-placement="right"
+              title="Download ALL Data in CSV"
+            >
+              <i class="bi bi-download"></i>
+            </button>
           </div>
+
           <div class="card-body">
-            <ul v-if="subjectList.length" class="list-group list-group-flush">
+            <ul v-if="quizScores.length" class="list-group list-group-flush">
               <li
-                v-for="subject in subjectList"
-                :key="subject.id"
+                v-for="score in quizScores"
+                :key="score.id"
                 class="list-group-item d-flex justify-content-between align-items-center"
               >
                 <div>
-                  <!-- Constant book icon -->
                   <i class="bi bi-book me-2"></i>
-                  <span>{{ subject.name }}</span>
+                  <span>{{ score.quiz_name }}</span>
                 </div>
-
-                <!-- Chapter count with badge -->
                 <span class="badge bg-primary rounded-pill">
-                  {{ subject.chapters.length }} Chapters
+                  {{ score.score }} Points
                 </span>
               </li>
             </ul>
-            <p v-else class="text-muted">No subjects available at this time.</p>
+            <p v-else class="text-muted">No Quizzes given yet!</p>
           </div>
         </div>
       </div>
@@ -101,7 +112,7 @@
   </div>
 </template>
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, nextTick } from "vue";
 import { useStore } from "vuex";
 import Chart from "chart.js/auto";
 
@@ -115,7 +126,6 @@ if (!userId) {
 // Reactive variables to store fetched data
 const userStats = ref([]);
 const upcomingQuizzes = ref([]);
-const subjectList = ref([]);
 const quizScores = ref([]);
 
 // Fetch User Stats
@@ -146,20 +156,6 @@ const fetchUpcomingQuizzes = async () => {
   }
 };
 
-// Fetch Subjects
-const fetchSubjects = async () => {
-  try {
-    const response = await fetch(
-      `http://localhost:5000/api/user/dashboard/${userId}/subjects`
-    );
-    if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-    const data = await response.json();
-    subjectList.value = data || [];
-  } catch (error) {
-    console.error("Error fetching subjects:", error);
-  }
-};
-
 // Fetch Quiz Scores
 const fetchQuizScores = async () => {
   try {
@@ -175,12 +171,61 @@ const fetchQuizScores = async () => {
   }
 };
 
+const downloadCSV = async () => {
+  try {
+    if (!userId) {
+      console.error("User ID not found.");
+      return;
+    }
+
+    // Step 1: Trigger CSV Generation
+    const response = await fetch(
+      `http://localhost:5000/api/user/dashboard/task/csv-export/${userId}`
+    );
+    if (!response.ok) {
+      throw new Error("Failed to trigger CSV generation.");
+    }
+
+    const { task_id } = await response.json();
+    console.log("CSV generation started. Task ID:", task_id);
+
+    // Step 2: Polling to Check Task Status
+    let isCompleted = false;
+    while (!isCompleted) {
+      const statusResponse = await fetch(
+        `http://localhost:5000/api/user/dashboard/task/csv-download/${task_id}`
+      );
+
+      if (statusResponse.ok) {
+        // Task completed, download the file
+        window.location.href = `http://localhost:5000/api/user/dashboard/task/csv-download/${task_id}`;
+        isCompleted = true;
+      } else if (statusResponse.status === 404) {
+        console.log(
+          "CSV still processing... Waiting 3 seconds before retrying."
+        );
+        await new Promise((resolve) => setTimeout(resolve, 3000)); // 3-second delay
+      } else {
+        throw new Error("Error checking CSV generation status.");
+      }
+    }
+  } catch (error) {
+    console.error("Error during CSV download process:", error);
+    alert("An error occurred. Please try again.");
+  }
+};
+
 // Render Chart using fetched quiz scores
-const renderChart = () => {
+let chartInstance = null; // Chart instance ko track karne ke liye
+
+// ✅ Render Chart using quizScores
+const renderChart = async () => {
   if (!quizScores.value.length) {
     console.error("No data available for chart rendering.");
     return;
   }
+
+  await nextTick(); // Ensure DOM is updated before accessing canvas
 
   const ctx = document.getElementById("learningProgressChart");
   if (!ctx) {
@@ -188,16 +233,25 @@ const renderChart = () => {
     return;
   }
 
-  new Chart(ctx, {
+  if (chartInstance) {
+    chartInstance.destroy();
+  }
+
+  const dataLabels = quizScores.value.map((_, index) => `Attempt ${index + 1}`);
+  const scoreData = quizScores.value.map((score) => score.percentage || 0);
+
+  chartInstance = new Chart(ctx, {
     type: "line",
     data: {
-      labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
+      labels: dataLabels,
       datasets: [
         {
-          label: "Quiz Scores",
-          data: quizScores.value,
+          label: "Quiz Scores (%)",
+          data: scoreData,
           borderColor: "rgb(75, 192, 192)",
-          tension: 0.1,
+          backgroundColor: "rgba(75, 192, 192, 0.2)",
+          fill: true,
+          tension: 0.2,
         },
       ],
     },
@@ -207,6 +261,16 @@ const renderChart = () => {
         title: {
           display: true,
           text: "Your Quiz Score Progress",
+        },
+        tooltip: {
+          callbacks: {
+            label: (context) => {
+              const index = context.dataIndex;
+              const score = quizScores.value[index];
+              const quizName = score.quiz_name || `Quiz ID: ${score.id}`;
+              return `${quizName} - ${score.percentage}%`;
+            },
+          },
         },
       },
       scales: {
@@ -222,7 +286,6 @@ const renderChart = () => {
 onMounted(() => {
   fetchUserStats();
   fetchUpcomingQuizzes();
-  fetchSubjects();
   fetchQuizScores();
 });
 </script>

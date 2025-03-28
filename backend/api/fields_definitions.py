@@ -19,7 +19,7 @@ questions_fields = {
     "id": fields.Integer,
     "question_text": fields.String,
     "options": fields.List(fields.String, attribute=lambda x: [x.option1, x.option2, x.option3, x.option4]),
-    "correct_option": fields.String,
+    "correct_option": fields.Integer,
     "subject_id": fields.Integer,
     "chapter_id": fields.Integer,
     "quiz_id": fields.Integer
@@ -45,8 +45,11 @@ score_fields = {
     "user_id": fields.Integer,
     "quiz_id": fields.Integer,
     "score": fields.Float,
-    "attempt_date": fields.DateTime,
-    "active": fields.Boolean
+    "quiz_name": fields.String(attribute=lambda x: x.quiz.title if x.quiz else "Unknown Quiz"),
+    "attempt_date": fields.String(attribute=lambda x: x.attempt_date.strftime('%Y-%m-%d')),
+    "active": fields.Boolean,
+    "percentage": fields.Float(attribute=lambda x: (x.score / (len(x.quiz.questions) * 1)) * 100 if x.quiz and x.quiz.questions else 0),
+    "total_marks": fields.Integer(attribute=lambda x: len(x.quiz.questions) if x.quiz and x.quiz.questions else 0)
 }
 
 user_fields = {

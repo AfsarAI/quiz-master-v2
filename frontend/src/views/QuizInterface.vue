@@ -148,9 +148,9 @@
                 :key="optIndex"
                 class="option-item"
                 :class="{
-                  selected: userAnswers[currentQuestionIndex] === option,
+                  selected: userAnswers[currentQuestionIndex] === optIndex,
                 }"
-                @click="selectOption(option)"
+                @click="selectOption(optIndex)"
               >
                 <div class="option-marker">
                   {{ ["A", "B", "C", "D"][optIndex] }}
@@ -288,32 +288,32 @@ export default {
         {
           question_text: "What is the capital of France?",
           options: ["London", "Berlin", "Paris", "Madrid"],
-          answer: "Paris",
+          correct_option: 2,
         },
         {
-          question: "Which planet is known as the Red Planet?",
+          question_text: "Which planet is known as the Red Planet?",
           options: ["Venus", "Mars", "Jupiter", "Saturn"],
-          answer: "Mars",
+          correct_option: 1,
         },
         {
-          question: "Who wrote 'Romeo and Juliet'?",
+          question_text: "Who wrote 'Romeo and Juliet'?",
           options: [
             "Charles Dickens",
             "William Shakespeare",
             "Jane Austen",
             "Mark Twain",
           ],
-          answer: "William Shakespeare",
+          correct_option: 1,
         },
         {
-          question: "What is the chemical symbol for gold?",
+          question_text: "What is the chemical symbol for gold?",
           options: ["Go", "Gd", "Au", "Ag"],
-          answer: "Au",
+          correct_option: 2,
         },
         {
-          question: "Which country is home to the kangaroo?",
+          question_text: "Which country is home to the kangaroo?",
           options: ["New Zealand", "South Africa", "Australia", "Brazil"],
-          answer: "Australia",
+          correct_option: 2,
         },
       ],
     });
@@ -323,6 +323,8 @@ export default {
     const questionStatus = ref([]);
     const visitedQuestions = ref([]);
     const currentQuestionIndex = ref(0);
+
+    console.log("UserAnswers", userAnswers);
 
     // ===== COMPUTED PROPERTIES =====
 
@@ -574,7 +576,10 @@ export default {
         return;
       }
 
-      if (userAnswers.value[index]) {
+      if (
+        userAnswers.value[index] !== null &&
+        userAnswers.value[index] !== undefined
+      ) {
         questionStatus.value[index] = "answered";
       } else if (visitedQuestions.value.includes(index)) {
         questionStatus.value[index] = "not-answered";
@@ -582,8 +587,8 @@ export default {
     };
 
     // Select an option for the current question
-    const selectOption = (option) => {
-      userAnswers.value[currentQuestionIndex.value] = option;
+    const selectOption = (optIndex) => {
+      userAnswers.value[currentQuestionIndex.value] = optIndex;
       saveQuizStateToLocalStorage();
     };
 
@@ -624,7 +629,8 @@ export default {
       const index = currentQuestionIndex.value;
       questionStatus.value[index] =
         questionStatus.value[index] === "marked"
-          ? userAnswers.value[index]
+          ? userAnswers.value[index] !== null &&
+            userAnswers.value[index] !== undefined
             ? "answered"
             : "not-answered"
           : "marked";
@@ -705,7 +711,9 @@ export default {
 
     // Confirm before submitting
     const confirmSubmit = () => {
-      const unansweredCount = userAnswers.value.filter((a) => !a).length;
+      const unansweredCount = userAnswers.value.filter(
+        (a) => a === null || a === undefined
+      ).length;
 
       if (unansweredCount > 0) {
         const confirm = window.confirm(
@@ -729,8 +737,11 @@ export default {
 
       // Calculate score
       const score = userAnswers.value.reduce((total, answer, index) => {
-        return total + (answer === quizData.questions[index].answer ? 1 : 0);
+        return (
+          total + (answer === quizData.questions[index].correct_option ? 1 : 0)
+        );
       }, 0);
+      console.log("Score:", score);
 
       // Prepare results object
       const resultsData = {
