@@ -2,108 +2,131 @@
   <div class="admin-overview container-fluid py-4">
     <h2 class="mb-4">Dashboard Overview</h2>
 
-    <!-- Stats Section -->
-    <div class="row g-4 mb-4">
-      <div v-for="stat in stats" :key="stat.title" class="col-md-3 col-sm-6">
-        <div class="card h-100">
-          <div class="card-body">
-            <h5 class="card-title">{{ stat.title }}</h5>
-            <p class="card-text display-4">{{ stat.value }}</p>
-            <p class="card-text text-muted">
-              <span
-                :class="stat.trend === 'up' ? 'text-success' : 'text-danger'"
-              >
-                <i
-                  :class="
-                    stat.trend === 'up' ? 'bi bi-arrow-up' : 'bi bi-arrow-down'
-                  "
-                ></i>
-                {{ stat.change }}%
-              </span>
-              since last week
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Recent Activity & Top Quizzes -->
-    <div class="row g-4">
-      <!-- Recent Activity Section -->
-      <div class="col-md-6">
-        <div class="card h-100">
-          <div class="card-header bg-primary text-white">
-            <h5 class="mb-0">Recent Activity</h5>
-          </div>
-          <div class="card-body">
-            <ul
-              v-if="recentActivity.length > 0"
-              class="list-group list-group-flush"
-            >
-              <li
-                v-for="activity in recentActivity"
-                :key="activity.id"
-                class="list-group-item"
-              >
-                <div class="d-flex w-100 justify-content-between">
-                  <h6 class="mb-1">{{ activity.action }}</h6>
-                  <small>{{ activity.time }}</small>
-                </div>
-                <p class="mb-1">{{ activity.details }}</p>
-                <small>{{ activity.user }}</small>
-              </li>
-            </ul>
-            <p v-else class="text-center text-muted">No activity this week.</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- Top Performing Quizzes Section -->
-      <div class="col-md-6">
-        <div class="card h-100">
-          <div class="card-header bg-success text-white">
-            <h5 class="mb-0">Top Performing Quizzes</h5>
-          </div>
-          <div class="card-body">
-            <p v-if="topScorers.length === 0" class="text-center text-muted">
-              No quizzes taken yet.
-            </p>
-            <table v-else class="table table-hover">
-              <thead>
-                <tr>
-                  <th>User Name</th>
-                  <th>Category</th>
-                  <th>Score</th>
-                  <th>Attempt Date</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr
-                  v-for="scorer in topScorers"
-                  :key="scorer.user + scorer.quiz_type"
+    <div v-if="!loading">
+      <!-- Stats Section -->
+      <div class="row g-4 mb-4">
+        <div v-for="stat in stats" :key="stat.title" class="col-md-3 col-sm-6">
+          <div class="card h-100">
+            <div class="card-body">
+              <h5 class="card-title">{{ stat.title }}</h5>
+              <p class="card-text display-4">{{ stat.value }}</p>
+              <p class="card-text text-muted">
+                <span
+                  :class="stat.trend === 'up' ? 'text-success' : 'text-danger'"
                 >
-                  <td>{{ scorer.user }}</td>
-                  <td>{{ scorer.quiz_type }}</td>
-                  <td>{{ scorer.score }}%</td>
-                  <td>{{ scorer.attempt_date }}</td>
-                </tr>
-              </tbody>
-            </table>
+                  <i
+                    :class="
+                      stat.trend === 'up'
+                        ? 'bi bi-arrow-up'
+                        : 'bi bi-arrow-down'
+                    "
+                  ></i>
+                  {{ stat.change }}%
+                </span>
+                since last week
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Activity & Top Quizzes -->
+      <div class="row g-4">
+        <!-- Recent Activity Section -->
+        <div class="col-md-6">
+          <div class="card h-100">
+            <div class="card-header bg-primary text-white">
+              <h5 class="mb-0">Recent Activity</h5>
+            </div>
+            <div class="card-body">
+              <ul
+                v-if="recentActivity.length > 0"
+                class="list-group list-group-flush"
+              >
+                <li
+                  v-for="activity in recentActivity"
+                  :key="activity.id"
+                  class="list-group-item"
+                >
+                  <div class="d-flex w-100 justify-content-between">
+                    <h6 class="mb-1">{{ activity.action }}</h6>
+                    <small>{{ activity.timestamp }}</small>
+                  </div>
+                  <p class="mb-1">{{ activity.details }}</p>
+                  <small>{{ activity.user }}</small>
+                </li>
+              </ul>
+              <p v-else class="text-center text-muted">
+                No activity this week.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Top Performing Quizzes Section -->
+        <div class="col-md-6">
+          <div class="card h-100">
+            <div class="card-header bg-success text-white">
+              <h5 class="mb-0">Top Performing Quizzes</h5>
+            </div>
+            <div class="card-body">
+              <p v-if="topScorers.length === 0" class="text-center text-muted">
+                No quizzes taken yet.
+              </p>
+              <table v-else class="table table-hover">
+                <thead>
+                  <tr>
+                    <th>User Name</th>
+                    <th>Quiz Name</th>
+                    <th>Score</th>
+                    <th>Attempt Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="scorer in topScorers" :key="scorer.user_id">
+                    <td>{{ scorer.user }}</td>
+                    <td>{{ scorer.quiz_name }}</td>
+                    <td>{{ scorer.score }}%</td>
+                    <td>{{ scorer.attempt_date }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- User Engagement Chart -->
+      <!-- Score Distribution Chart -->
+      <div class="row mt-4">
+        <div class="col-md-6">
+          <div class="card">
+            <div class="card-header bg-warning text-white">
+              <h5 class="mb-0">Score Distribution</h5>
+            </div>
+            <div class="card-body">
+              <canvas id="scoreDistributionChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quiz Participation Chart -->
+        <div class="col-md-6">
+          <div class="card">
+            <div class="card-header bg-info text-white">
+              <h5 class="mb-0">Quiz Participation Overview</h5>
+            </div>
+            <div class="card-body">
+              <canvas id="quizParticipationChart"></canvas>
+            </div>
           </div>
         </div>
       </div>
     </div>
-
-    <!-- User Engagement Chart -->
-    <div class="row mt-4">
-      <div class="col-12">
-        <div class="card">
-          <div class="card-header bg-info text-white">
-            <h5 class="mb-0">User Engagement</h5>
-          </div>
-          <div class="card-body">
-            <canvas id="userEngagementChart"></canvas>
-          </div>
+    <div v-else>
+      <div class="position-absolute top-50 start-50 translate-middle">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Loading...</span>
         </div>
       </div>
     </div>
@@ -119,10 +142,12 @@ import Chart from "chart.js/auto";
 const stats = ref([]);
 const recentActivity = ref([]);
 const topScorers = ref([]);
+const loading = ref(false);
 
 // Fetch Stats with Trend Calculation
 const fetchStats = async () => {
   try {
+    loading.value = true;
     const response = await fetch(
       "http://127.0.0.1:5000/api/admin/dashboard/stats"
     );
@@ -139,61 +164,66 @@ const fetchStats = async () => {
     });
   } catch (error) {
     console.error("Error fetching stats:", error);
+  } finally {
+    loading.value = false;
   }
 };
 
 // Fetch Recent Activity
 const fetchRecentActivity = async () => {
   try {
+    loading.value = true;
     const response = await fetch(
       "http://127.0.0.1:5000/api/admin/dashboard/get/recent-activity/data"
     );
     const data = await response.json();
     // Check if activities exist, otherwise set an empty array
-    recentActivity.value = data.activities || [];
+    recentActivity.value = data || [];
   } catch (error) {
     console.error("Error fetching recent activity:", error);
+  } finally {
+    loading.value = false;
   }
 };
 
 // Fetch Top Performing Quizzes
 const fetchTopScorers = async () => {
   try {
+    loading.value = true;
     const response = await fetch(
       "http://127.0.0.1:5000/api/admin/dashboard/top-scorers"
     );
     const data = await response.json();
-    topScorers.value = data.top_scorers || [];
+    topScorers.value = data || [];
   } catch (error) {
     console.error("Error fetching top quizzes:", error);
+  } finally {
+    loading.value = false;
   }
 };
 
-// Initialize User Engagement Chart
-const initUserEngagementChart = async () => {
+// Initialize User Engagement Charts
+const initUserEngagementCharts = async () => {
   try {
+    loading.value = true;
     const response = await fetch(
       "http://127.0.0.1:5000/api/admin/dashboard/user-engagement"
     );
     const engagementData = await response.json();
 
-    const ctx = document.getElementById("userEngagementChart");
-    new Chart(ctx, {
-      type: "line",
+    // Histogram for Score Distribution
+    const ctx1 = document.getElementById("scoreDistributionChart");
+    new Chart(ctx1, {
+      type: "bar",
       data: {
-        labels: engagementData.labels,
+        labels: engagementData.scoreRanges,
         datasets: [
           {
-            label: "Active Users",
-            data: engagementData.activeUsers,
-            borderColor: "rgb(75, 192, 192)",
-            tension: 0.1,
-          },
-          {
-            label: "Quizzes Taken",
-            data: engagementData.quizzesTaken,
-            borderColor: "rgb(255, 99, 132)",
-            tension: 0.1,
+            label: "Users in Score Range",
+            data: engagementData.scoreCounts,
+            backgroundColor: "rgba(75, 192, 192, 0.6)",
+            borderColor: "rgba(75, 192, 192, 1)",
+            borderWidth: 1,
           },
         ],
       },
@@ -202,7 +232,7 @@ const initUserEngagementChart = async () => {
         plugins: {
           title: {
             display: true,
-            text: "User Engagement Over Time",
+            text: "Score Distribution of Users",
           },
         },
         scales: {
@@ -210,8 +240,41 @@ const initUserEngagementChart = async () => {
         },
       },
     });
+
+    // Pie Chart for Quiz Participation
+    const ctx2 = document.getElementById("quizParticipationChart");
+    new Chart(ctx2, {
+      type: "pie",
+      data: {
+        labels: ["1-5 Quizzes", "6-10 Quizzes", "11-20 Quizzes", "21+ Quizzes"],
+        datasets: [
+          {
+            label: "Users by Quiz Participation",
+            data: engagementData.quizParticipation,
+            backgroundColor: [
+              "rgba(255, 99, 132, 0.6)",
+              "rgba(54, 162, 235, 0.6)",
+              "rgba(255, 206, 86, 0.6)",
+              "rgba(75, 192, 192, 0.6)",
+            ],
+            borderWidth: 1,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          title: {
+            display: true,
+            text: "Quiz Participation Overview",
+          },
+        },
+      },
+    });
   } catch (error) {
-    console.error("Error initializing user engagement chart:", error);
+    console.error("Error initializing charts:", error);
+  } finally {
+    loading.value = false;
   }
 };
 
@@ -220,11 +283,16 @@ onMounted(() => {
   fetchStats();
   fetchRecentActivity();
   fetchTopScorers();
-  initUserEngagementChart();
+  initUserEngagementCharts();
 });
 </script>
 
 <style scoped>
+.spinner-border {
+  width: 3rem;
+  height: 3rem;
+}
+
 .admin-overview {
   max-width: 1200px;
   margin: 0 auto;

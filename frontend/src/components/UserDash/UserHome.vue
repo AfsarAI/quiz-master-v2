@@ -1,111 +1,123 @@
 <template>
   <div class="user-home container-fluid py-4">
     <h2 class="mb-4">User Home Page!</h2>
+    <div v-if="!isLoading">
+      <div class="row g-4 mb-4">
+        <div
+          class="col-md-3 col-sm-6"
+          v-for="(stat, index) in userStats"
+          :key="index"
+        >
+          <div class="card stat-card h-100">
+            <div class="card-body">
+              <h5 class="card-title">{{ stat.title }}</h5>
+              <p class="card-text display-4">{{ stat.value }}</p>
+              <div class="stat-icon">
+                <i :class="stat.icon"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
-    <div class="row g-4 mb-4">
-      <div
-        class="col-md-3 col-sm-6"
-        v-for="(stat, index) in userStats"
-        :key="index"
-      >
-        <div class="card stat-card h-100">
-          <div class="card-body">
-            <h5 class="card-title">{{ stat.title }}</h5>
-            <p class="card-text display-4">{{ stat.value }}</p>
-            <div class="stat-icon">
-              <i :class="stat.icon"></i>
+      <div class="row g-4">
+        <div class="col-md-6">
+          <div class="card h-100">
+            <div class="card-header bg-primary text-white">
+              <h5 class="mb-0">Recently Added Top 3 Quizzes</h5>
+            </div>
+            <div class="card-body">
+              <ul
+                v-if="upcomingQuizzes.length"
+                class="list-group list-group-flush"
+              >
+                <li
+                  v-for="quiz in upcomingQuizzes"
+                  :key="quiz.id"
+                  class="list-group-item d-flex justify-content-between align-items-center"
+                >
+                  <div>
+                    <h6 class="mb-0">{{ quiz.title }}</h6>
+                    <small class="text-muted">{{ quiz.quiz_type }}</small>
+                  </div>
+                  <span class="badge bg-primary rounded-pill">{{
+                    quiz.date_created
+                  }}</span>
+                </li>
+              </ul>
+              <p v-else class="text-muted">
+                No quizzes available at this time.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-6">
+          <div class="card h-100">
+            <div
+              class="card-header bg-success text-white d-flex justify-content-between align-items-center"
+            >
+              <h5 class="mb-0">All Given Quizzes</h5>
+
+              <!-- Download Button with Tooltip -->
+              <button
+                v-if="quizScores.length"
+                type="button"
+                class="btn btn-light btn-sm"
+                @click="downloadCSV"
+                data-bs-toggle="tooltip"
+                data-bs-placement="right"
+                title="Download ALL Data in CSV"
+              >
+                <i class="bi bi-download"></i>
+              </button>
+            </div>
+
+            <div class="card-body">
+              <ul v-if="quizScores.length" class="list-group list-group-flush">
+                <li
+                  v-for="score in quizScores"
+                  :key="score.id"
+                  class="list-group-item d-flex justify-content-between align-items-center"
+                >
+                  <div>
+                    <i class="bi bi-book me-2"></i>
+                    <span>{{ score.quiz_name }}</span>
+                  </div>
+                  <span class="badge bg-primary rounded-pill">
+                    {{ score.score }} Points
+                  </span>
+                </li>
+              </ul>
+              <p v-else class="text-muted">No Quizzes given yet!</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="row mt-4">
+          <div class="col-12">
+            <div class="card">
+              <div class="card-header bg-info text-white">
+                <h5 class="mb-0">Your Learning Progress</h5>
+              </div>
+              <div class="card-body">
+                <canvas
+                  v-if="quizScores.length"
+                  id="learningProgressChart"
+                ></canvas>
+                <p v-else class="text-muted">
+                  No data available for learning progress at this time.
+                </p>
+              </div>
             </div>
           </div>
         </div>
       </div>
     </div>
-
-    <div class="row g-4">
-      <div class="col-md-6">
-        <div class="card h-100">
-          <div class="card-header bg-primary text-white">
-            <h5 class="mb-0">Recently Added Top 3 Quizzes</h5>
-          </div>
-          <div class="card-body">
-            <ul
-              v-if="upcomingQuizzes.length"
-              class="list-group list-group-flush"
-            >
-              <li
-                v-for="quiz in upcomingQuizzes"
-                :key="quiz.id"
-                class="list-group-item d-flex justify-content-between align-items-center"
-              >
-                <div>
-                  <h6 class="mb-0">{{ quiz.title }}</h6>
-                  <small class="text-muted">{{ quiz.quiz_type }}</small>
-                </div>
-                <span class="badge bg-primary rounded-pill">{{
-                  quiz.date_created
-                }}</span>
-              </li>
-            </ul>
-            <p v-else class="text-muted">No quizzes available at this time.</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="col-md-6">
-        <div class="card h-100">
-          <div
-            class="card-header bg-success text-white d-flex justify-content-between align-items-center"
-          >
-            <h5 class="mb-0">All Given Quizzes</h5>
-
-            <!-- Download Button with Tooltip -->
-            <button
-              class="btn btn-light btn-sm"
-              @click="downloadCSV"
-              data-bs-toggle="tooltip"
-              data-bs-placement="right"
-              title="Download ALL Data in CSV"
-            >
-              <i class="bi bi-download"></i>
-            </button>
-          </div>
-
-          <div class="card-body">
-            <ul v-if="quizScores.length" class="list-group list-group-flush">
-              <li
-                v-for="score in quizScores"
-                :key="score.id"
-                class="list-group-item d-flex justify-content-between align-items-center"
-              >
-                <div>
-                  <i class="bi bi-book me-2"></i>
-                  <span>{{ score.quiz_name }}</span>
-                </div>
-                <span class="badge bg-primary rounded-pill">
-                  {{ score.score }} Points
-                </span>
-              </li>
-            </ul>
-            <p v-else class="text-muted">No Quizzes given yet!</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="row mt-4">
-        <div class="col-12">
-          <div class="card">
-            <div class="card-header bg-info text-white">
-              <h5 class="mb-0">Your Learning Progress</h5>
-            </div>
-            <div class="card-body">
-              <canvas
-                v-if="quizScores.length"
-                id="learningProgressChart"
-              ></canvas>
-              <p v-else class="text-muted">
-                No data available for learning progress at this time.
-              </p>
-            </div>
-          </div>
+    <div v-else>
+      <div class="position-absolute top-50 start-50 translate-middle">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Loading...</span>
         </div>
       </div>
     </div>
@@ -127,9 +139,11 @@ if (!userId) {
 const userStats = ref([]);
 const upcomingQuizzes = ref([]);
 const quizScores = ref([]);
+const isLoading = ref(false);
 
 // Fetch User Stats
 const fetchUserStats = async () => {
+  isLoading.value = true;
   try {
     const response = await fetch(
       `http://localhost:5000/api/user/dashboard/${userId}/user-stats`
@@ -139,11 +153,14 @@ const fetchUserStats = async () => {
     userStats.value = data.user_stats_data || [];
   } catch (error) {
     console.error("Error fetching user stats:", error);
+  } finally {
+    isLoading.value = false;
   }
 };
 
 // Fetch Upcoming Quizzes
 const fetchUpcomingQuizzes = async () => {
+  isLoading.value = true;
   try {
     const response = await fetch(
       "http://localhost:5000/api/user/dashboard/upcoming-quizzes"
@@ -153,11 +170,14 @@ const fetchUpcomingQuizzes = async () => {
     upcomingQuizzes.value = data || [];
   } catch (error) {
     console.error("Error fetching upcoming quizzes:", error);
+  } finally {
+    isLoading.value = false;
   }
 };
 
 // Fetch Quiz Scores
 const fetchQuizScores = async () => {
+  isLoading.value = true;
   try {
     const response = await fetch(
       `http://localhost:5000/api/user/dashboard/${userId}/quiz-scores`
@@ -168,6 +188,8 @@ const fetchQuizScores = async () => {
     renderChart();
   } catch (error) {
     console.error("Error fetching quiz scores:", error);
+  } finally {
+    isLoading.value = false;
   }
 };
 
@@ -291,6 +313,11 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.spinner-border {
+  width: 3rem;
+  height: 3rem;
+}
+
 .user-home {
   max-width: 1200px;
   margin: 0 auto;

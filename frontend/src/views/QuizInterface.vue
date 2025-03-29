@@ -1,234 +1,252 @@
 <template>
   <div class="quiz-container" :class="{ 'dark-mode': isDarkMode }">
-    <!-- Instructions Page -->
-    <div v-if="!isQuizStarted" class="instructions-page">
-      <div class="instructions-card">
-        <h1 class="exam-title">{{ quizData.title }}</h1>
-        <div class="user-info">
-          <div class="user-photo">
-            <img
-              v-if="userProfile && userProfile.profile_url"
-              :src="userProfile.profile_url"
-              alt="User Photo"
-            />
-            <div v-else class="avatar-placeholder">
-              <span>{{ getUserInitials() }}</span>
+    <div v-if="userProfile && quizData">
+      <!-- Instructions Page -->
+      <div v-if="!isQuizStarted" class="instructions-page">
+        <div class="instructions-card">
+          <h1 class="exam-title">{{ quizData.title }}</h1>
+          <div class="user-info">
+            <div class="user-photo">
+              <img
+                v-if="userProfile && userProfile.profile_url"
+                :src="userProfile.profile_url"
+                alt="User Photo"
+              />
+              <div v-else class="avatar-placeholder">
+                <span>{{ getUserInitials() }}</span>
+              </div>
+            </div>
+            <div class="user-details">
+              <p><strong>Name:</strong> {{ userProfile?.fullname }}</p>
+              <p><strong>ID:</strong> {{ userProfile?.id }}</p>
+              <p><strong>Duration:</strong> {{ quizData.duration }} minutes</p>
             </div>
           </div>
-          <div class="user-details">
-            <p><strong>Name:</strong> {{ userProfile?.fullname || "User" }}</p>
-            <p><strong>ID:</strong> {{ userProfile?.id || "N/A" }}</p>
-            <p><strong>Duration:</strong> {{ quizData.duration }} minutes</p>
-          </div>
-        </div>
 
-        <div class="instructions-content">
-          <h3>Instructions:</h3>
-          <ul>
-            <li
-              v-for="(instruction, index) in quizData.instructions"
-              :key="index"
-            >
-              {{ instruction }}
-            </li>
-            <li>
-              The questions panel on the right shows the status of each
-              question:
-            </li>
-            <div class="legend">
-              <div class="legend-item">
-                <span class="status-indicator not-visited"></span> Not Visited
-              </div>
-              <div class="legend-item">
-                <span class="status-indicator current"></span> Current Question
-              </div>
-              <div class="legend-item">
-                <span class="status-indicator answered"></span> Answered
-              </div>
-              <div class="legend-item">
-                <span class="status-indicator not-answered"></span> Not Answered
-              </div>
-              <div class="legend-item">
-                <span class="status-indicator marked"></span> Marked for Review
-              </div>
-            </div>
-            <li>
-              You can navigate between questions using the question panel or
-              navigation buttons.
-            </li>
-            <li>
-              Click "Submit Exam" only when you are sure you want to finish the
-              exam.
-            </li>
-            <li>
-              Your answers are automatically saved when you navigate to another
-              question.
-            </li>
-            <li v-if="hasInProgressQuiz" class="resume-notice">
-              You have an in-progress quiz. You can resume from where you left
-              off.
-            </li>
-          </ul>
-        </div>
-
-        <div class="start-buttons">
-          <button
-            v-if="hasInProgressQuiz"
-            @click="resumeQuiz"
-            class="btn-secondary resume-btn"
-          >
-            Resume Quiz
-          </button>
-          <button @click="startQuiz" class="btn-primary start-btn">
-            {{ hasInProgressQuiz ? "Restart Quiz" : "Start Exam" }}
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Exam Interface -->
-    <div v-else class="exam-interface">
-      <!-- Header -->
-      <div class="exam-header">
-        <div class="exam-info">
-          <h2>{{ quizData.title }}</h2>
-        </div>
-        <div class="header-right">
-          <div class="timer-container">
-            <div class="timer" :class="{ 'timer-warning': timeLeft < 300 }">
-              {{ formattedTime }}
-            </div>
-          </div>
-          <div class="user-profile">
-            <div v-if="userProfile && userProfile.photo" class="user-avatar">
-              <img :src="userProfile.photo" alt="User Photo" />
-            </div>
-            <div v-else class="user-avatar-placeholder">
-              <span>{{ getUserInitials() }}</span>
-            </div>
-            <div class="user-brief">
-              <p>
-                {{ userProfile?.name || "User" }} | ID:
-                {{ userProfile?.id || "N/A" }}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Main Content -->
-      <div class="exam-content">
-        <!-- Question Area -->
-        <div class="question-area">
-          <div class="question-header">
-            <h3>Question {{ currentQuestionIndex + 1 }}</h3>
-            <div class="question-actions">
-              <button
-                @click="markForReview"
-                class="btn-secondary mark-btn"
-                :class="{
-                  marked: questionStatus[currentQuestionIndex] === 'marked',
-                }"
+          <div class="instructions-content">
+            <h3>Instructions:</h3>
+            <ul>
+              <li
+                v-for="(instruction, index) in quizData.instructions"
+                :key="index"
               >
-                {{
-                  questionStatus[currentQuestionIndex] === "marked"
-                    ? "Unmark"
-                    : "Mark for Review"
-                }}
+                {{ instruction }}
+              </li>
+              <li>
+                The questions panel on the right shows the status of each
+                question:
+              </li>
+              <div class="legend">
+                <div class="legend-item">
+                  <span class="status-indicator not-visited"></span> Not Visited
+                </div>
+                <div class="legend-item">
+                  <span class="status-indicator current"></span> Current
+                  Question
+                </div>
+                <div class="legend-item">
+                  <span class="status-indicator answered"></span> Answered
+                </div>
+                <div class="legend-item">
+                  <span class="status-indicator not-answered"></span> Not
+                  Answered
+                </div>
+                <div class="legend-item">
+                  <span class="status-indicator marked"></span> Marked for
+                  Review
+                </div>
+              </div>
+              <li>
+                You can navigate between questions using the question panel or
+                navigation buttons.
+              </li>
+              <li>
+                Click "Submit Exam" only when you are sure you want to finish
+                the exam.
+              </li>
+              <li>
+                Your answers are automatically saved when you navigate to
+                another question.
+              </li>
+              <li v-if="hasInProgressQuiz" class="resume-notice">
+                You have an in-progress quiz. You can resume from where you left
+                off.
+              </li>
+            </ul>
+          </div>
+
+          <div class="start-buttons">
+            <button
+              v-if="hasInProgressQuiz"
+              @click="resumeQuiz"
+              class="btn-secondary resume-btn"
+            >
+              Resume Quiz
+            </button>
+            <button @click="startQuiz" class="btn-primary start-btn">
+              {{ hasInProgressQuiz ? "Restart Quiz" : "Start Exam" }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Exam Interface -->
+      <div v-else class="exam-interface">
+        <!-- Header -->
+        <div class="exam-header">
+          <div class="exam-info">
+            <h2>{{ quizData.title }}</h2>
+          </div>
+          <div class="header-right">
+            <div class="timer-container">
+              <div class="timer" :class="{ 'timer-warning': timeLeft < 300 }">
+                {{ formattedTime }}
+              </div>
+            </div>
+            <div class="user-profile">
+              <div v-if="userProfile && userProfile.photo" class="user-avatar">
+                <img :src="userProfile.photo" alt="User Photo" />
+              </div>
+              <div v-else class="user-avatar-placeholder">
+                <span>{{ getUserInitials() }}</span>
+              </div>
+              <div class="user-brief">
+                <p>
+                  {{ userProfile?.name || "User" }} | ID:
+                  {{ userProfile?.id || "N/A" }}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="exam-content">
+          <!-- Question Area -->
+          <div class="question-area">
+            <div class="question-header">
+              <h3>Question {{ currentQuestionIndex + 1 }}</h3>
+              <div class="question-actions">
+                <button
+                  @click="markForReview"
+                  class="btn-secondary mark-btn"
+                  :class="{
+                    marked: questionStatus[currentQuestionIndex] === 'marked',
+                  }"
+                >
+                  {{
+                    questionStatus[currentQuestionIndex] === "marked"
+                      ? "Unmark"
+                      : "Mark for Review"
+                  }}
+                </button>
+              </div>
+            </div>
+
+            <div class="question-content">
+              <p class="question-text">{{ currentQuestion.question_text }}</p>
+
+              <div class="options-list">
+                <div
+                  v-for="(option, optIndex) in currentQuestion.options"
+                  :key="optIndex"
+                  class="option-item"
+                  :class="{
+                    selected: userAnswers[currentQuestionIndex] === optIndex,
+                  }"
+                  @click="selectOption(optIndex)"
+                >
+                  <div class="option-marker">
+                    {{ ["A", "B", "C", "D"][optIndex] }}
+                  </div>
+                  <div class="option-text">{{ option }}</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="navigation-buttons">
+              <button
+                @click="previousQuestion"
+                class="btn-secondary"
+                :disabled="currentQuestionIndex === 0"
+              >
+                Previous
+              </button>
+              <button
+                @click="clearResponse"
+                class="btn-secondary"
+                :disabled="!userAnswers[currentQuestionIndex]"
+              >
+                Clear Response
+              </button>
+              <button
+                @click="saveAndNext"
+                class="btn-primary"
+                :disabled="
+                  currentQuestionIndex === quizData.questions.length - 1
+                "
+              >
+                Save & Next
               </button>
             </div>
           </div>
 
-          <div class="question-content">
-            <p class="question-text">{{ currentQuestion.question_text }}</p>
+          <!-- Questions Panel -->
+          <div class="questions-panel">
+            <div class="panel-header">
+              <h3>Questions</h3>
+            </div>
 
-            <div class="options-list">
+            <div class="question-numbers">
               <div
-                v-for="(option, optIndex) in currentQuestion.options"
-                :key="optIndex"
-                class="option-item"
-                :class="{
-                  selected: userAnswers[currentQuestionIndex] === optIndex,
-                }"
-                @click="selectOption(optIndex)"
+                v-for="(_, index) in quizData.questions"
+                :key="index"
+                class="question-number"
+                :class="getQuestionStatusClass(index)"
+                @click="goToQuestion(index)"
               >
-                <div class="option-marker">
-                  {{ ["A", "B", "C", "D"][optIndex] }}
-                </div>
-                <div class="option-text">{{ option }}</div>
+                {{ index + 1 }}
               </div>
             </div>
-          </div>
 
-          <div class="navigation-buttons">
-            <button
-              @click="previousQuestion"
-              class="btn-secondary"
-              :disabled="currentQuestionIndex === 0"
-            >
-              Previous
-            </button>
-            <button
-              @click="clearResponse"
-              class="btn-secondary"
-              :disabled="!userAnswers[currentQuestionIndex]"
-            >
-              Clear Response
-            </button>
-            <button
-              @click="saveAndNext"
-              class="btn-primary"
-              :disabled="currentQuestionIndex === quizData.questions.length - 1"
-            >
-              Save & Next
+            <div class="panel-summary">
+              <div class="summary-item">
+                <span class="status-indicator answered"></span>
+                <span
+                  >Answered: {{ getQuestionCountByStatus("answered") }}</span
+                >
+              </div>
+              <div class="summary-item">
+                <span class="status-indicator not-answered"></span>
+                <span
+                  >Not Answered:
+                  {{ getQuestionCountByStatus("not-answered") }}</span
+                >
+              </div>
+              <div class="summary-item">
+                <span class="status-indicator not-visited"></span>
+                <span
+                  >Not Visited:
+                  {{ getQuestionCountByStatus("not-visited") }}</span
+                >
+              </div>
+              <div class="summary-item">
+                <span class="status-indicator marked"></span>
+                <span>Marked: {{ getQuestionCountByStatus("marked") }}</span>
+              </div>
+            </div>
+
+            <button @click="confirmSubmit" class="btn-submit">
+              Submit Exam
             </button>
           </div>
         </div>
-
-        <!-- Questions Panel -->
-        <div class="questions-panel">
-          <div class="panel-header">
-            <h3>Questions</h3>
-          </div>
-
-          <div class="question-numbers">
-            <div
-              v-for="(_, index) in quizData.questions"
-              :key="index"
-              class="question-number"
-              :class="getQuestionStatusClass(index)"
-              @click="goToQuestion(index)"
-            >
-              {{ index + 1 }}
-            </div>
-          </div>
-
-          <div class="panel-summary">
-            <div class="summary-item">
-              <span class="status-indicator answered"></span>
-              <span>Answered: {{ getQuestionCountByStatus("answered") }}</span>
-            </div>
-            <div class="summary-item">
-              <span class="status-indicator not-answered"></span>
-              <span
-                >Not Answered:
-                {{ getQuestionCountByStatus("not-answered") }}</span
-              >
-            </div>
-            <div class="summary-item">
-              <span class="status-indicator not-visited"></span>
-              <span
-                >Not Visited:
-                {{ getQuestionCountByStatus("not-visited") }}</span
-              >
-            </div>
-            <div class="summary-item">
-              <span class="status-indicator marked"></span>
-              <span>Marked: {{ getQuestionCountByStatus("marked") }}</span>
-            </div>
-          </div>
-
-          <button @click="confirmSubmit" class="btn-submit">Submit Exam</button>
+      </div>
+    </div>
+    <div v-else>
+      <div class="position-absolute top-50 start-50 translate-middle">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Loading...</span>
         </div>
       </div>
     </div>
@@ -251,7 +269,7 @@ export default {
     const quizId = route.params.quiz_id;
 
     // Get user ID from store
-    const userId = computed(() => store.state.user?.id || "guest");
+    const userId = computed(() => store.state.user?.id);
     const role = ref(null);
 
     // Get dark mode from store
@@ -271,51 +289,10 @@ export default {
 
     // User profile data
     const userProfile = ref(null);
-
-    // Mock quiz data - will be replaced with API data
     const quizData = reactive({
-      title: "General Knowledge Quiz",
-      duration: 30,
-      instructions: [
-        "Each question has four options, choose the correct one.",
-        "You can navigate between questions using the question panel or navigation buttons.",
-        "Your time will end automatically if the timer runs out.",
-        "Questions marked for review will be highlighted in purple.",
-        "You can change your answers any time before submitting the exam.",
-        "Your progress is automatically saved. If you leave, you can resume later.",
-      ],
-      questions: [
-        {
-          question_text: "What is the capital of France?",
-          options: ["London", "Berlin", "Paris", "Madrid"],
-          correct_option: 2,
-        },
-        {
-          question_text: "Which planet is known as the Red Planet?",
-          options: ["Venus", "Mars", "Jupiter", "Saturn"],
-          correct_option: 1,
-        },
-        {
-          question_text: "Who wrote 'Romeo and Juliet'?",
-          options: [
-            "Charles Dickens",
-            "William Shakespeare",
-            "Jane Austen",
-            "Mark Twain",
-          ],
-          correct_option: 1,
-        },
-        {
-          question_text: "What is the chemical symbol for gold?",
-          options: ["Go", "Gd", "Au", "Ag"],
-          correct_option: 2,
-        },
-        {
-          question_text: "Which country is home to the kangaroo?",
-          options: ["New Zealand", "South Africa", "Australia", "Brazil"],
-          correct_option: 2,
-        },
-      ],
+      title: "",
+      duration: 0,
+      questions: [],
     });
 
     // User answers and question status tracking
@@ -323,8 +300,6 @@ export default {
     const questionStatus = ref([]);
     const visitedQuestions = ref([]);
     const currentQuestionIndex = ref(0);
-
-    console.log("UserAnswers", userAnswers);
 
     // ===== COMPUTED PROPERTIES =====
 
@@ -659,19 +634,21 @@ export default {
     const fetchUserProfile = async () => {
       try {
         const response = await fetch(
-          `http://127.0.0.1:5000/api/user/${userId.value}/data`
+          `http://127.0.0.1:5000/api/user/${userId.value}/data`,
+          {
+            headers: {
+              "Authentication-Token": store.state.user?.token,
+              "Content-Type": "application/json",
+            },
+          }
         );
         if (response.ok) {
           userProfile.value = await response.json();
         }
       } catch (error) {
         console.error("Failed to fetch user profile:", error);
-        // Set default profile if fetch fails
-        userProfile.value = {
-          name: "Test User",
-          id: "TEST123",
-          photo: null,
-        };
+        alert("Failed to fetch user profile. Please try again later.");
+        router.push("/");
       }
     };
 
@@ -679,7 +656,13 @@ export default {
     const fetchQuizData = async () => {
       try {
         const response = await fetch(
-          `http://127.0.0.1:5000/api/user/dashboard/quiz/${quizId}/quiz-data`
+          `http://127.0.0.1:5000/api/user/dashboard/quiz/${quizId}/quiz-data`,
+          {
+            headers: {
+              "Content-Type": "application/json",
+              "Authentication-Token": store.state.user?.token,
+            },
+          }
         );
         if (!response.ok) {
           throw new Error("Failed to fetch quiz data");
@@ -698,6 +681,8 @@ export default {
         hasInProgressQuiz.value = !!savedState;
       } catch (error) {
         console.error("Failed to fetch quiz data:", error);
+        alert("Failed to fetch quiz data. Please try again later.");
+        router.push("/");
         // Initialize with mock data if fetch fails
         initializeQuestionStatus();
 
@@ -873,6 +858,10 @@ export default {
 </script>
 
 <style scoped>
+.spinner-border {
+  width: 3rem;
+  height: 3rem;
+}
 /* Base Styles */
 .quiz-container {
   min-height: 100vh;

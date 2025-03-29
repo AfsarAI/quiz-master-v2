@@ -30,13 +30,16 @@ quizzes_fields = {
     "title": fields.String,
     "description": fields.String,
     "quiz_type": fields.String,
+    "qualification_id": fields.Integer,
     "subject_id": fields.Integer,
     "chapter_id": fields.Integer,
-    "date_created": fields.String(attribute=lambda x: x.date_created.strftime('%Y-%m-%d %H:%M:%S')),
+    "date_created": fields.String(attribute=lambda x: x.date_created.strftime('%Y-%m-%d %H:%M:%S') 
+                                if hasattr(x, 'date_created') and x.date_created else ''),
     "duration": fields.Integer,
     "questions": fields.List(fields.Nested(questions_fields)),
     "subject": fields.Nested(subjects_fields, allow_null=True),
-    "chapter": fields.Nested(chapters_fields, allow_null=True)
+    "chapter": fields.Nested(chapters_fields, allow_null=True),
+    "attempt_count": fields.Integer
 }
 
 
@@ -44,6 +47,7 @@ score_fields = {
     "id": fields.Integer,
     "user_id": fields.Integer,
     "quiz_id": fields.Integer,
+    "user": fields.String(attribute=lambda x: x.user.fullname if x.user else "Unknown User"),
     "score": fields.Float,
     "quiz_name": fields.String(attribute=lambda x: x.quiz.title if x.quiz else "Unknown Quiz"),
     "attempt_date": fields.String(attribute=lambda x: x.attempt_date.strftime('%Y-%m-%d')),
@@ -58,8 +62,12 @@ user_fields = {
     "password": fields.String,
     "fullname": fields.String,
     "dob": fields.String,
-    "gender":fields.String,
-    "qualification_id": fields.Integer,
+    "gender": fields.String,
+    "qualification": fields.Nested({
+        "id": fields.Integer,
+        "name": fields.String,
+        "description": fields.String,
+    }),
     "profile_url": fields.String,
     "address": fields.String,
     "phone": fields.String,
@@ -69,10 +77,9 @@ user_fields = {
         "description": fields.String
     })),
     "subjects": fields.List(fields.Nested(subjects_fields)),
-    "quizzes": fields.List(fields.Nested(quizzes_fields)),
     "scores": fields.List(fields.Nested(score_fields)),
+    "active": fields.Boolean,
 }
-
 
 qual_fields = {
     "id": fields.Integer,

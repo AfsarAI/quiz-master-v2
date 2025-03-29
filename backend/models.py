@@ -82,18 +82,20 @@ class Chapter(db.Model):
 
 
 # Quiz Model
+# Quiz Model
 class Quiz(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(255), nullable=False)
     quiz_type = db.Column(db.String(50), nullable=False)  # 'whole', 'subject', or 'chapter'
+    qualification_id = db.Column(db.Integer, db.ForeignKey('qualification.id'), nullable=False)
     subject_id = db.Column(db.Integer, db.ForeignKey('subject.id'), nullable=True)
     chapter_id = db.Column(db.Integer, db.ForeignKey('chapter.id'), nullable=True)
     date_created = db.Column(db.DateTime, default=datetime.now, nullable=False)
-    duration = db.Column(db.Integer, nullable=False)  # Duration in minutes
+    duration = db.Column(db.Integer, nullable=False)
 
     # Relationships
     questions = db.relationship('Question', backref='quiz', lazy=True)
-    scores = db.relationship('Score', backref='quiz', lazy=True)
+    scores = db.relationship('Score', back_populates='quiz', lazy=True)
     subject = db.relationship('Subject', backref='quizzes', foreign_keys=[subject_id])
     chapter = db.relationship('Chapter', back_populates='quizzes')
 
@@ -128,6 +130,9 @@ class Score(db.Model):
     time_taken = db.Column(db.Integer, nullable=False)
     attempt_date = db.Column(db.DateTime, default=datetime.now, nullable=False)
     active = db.Column(db.Boolean, default=True)
+
+    # Relationships
+    quiz = db.relationship('Quiz', back_populates='scores')
 
 # Extra
 class RecentActivity(db.Model):

@@ -187,7 +187,7 @@ def create_subjects_and_chapters():
 def create_quizzes_and_questions():
     """Create quizzes and questions for each qualification, subject, and chapter"""
     try:
-        # Create whole quizzes (not tied to specific subjects or chapters)
+        # Create whole quizzes (linked to qualifications)
         qualifications = Qualification.query.all()
         
         for qualification in qualifications:
@@ -195,6 +195,7 @@ def create_quizzes_and_questions():
             whole_quiz = Quiz(
                 title=f"General Quiz for {qualification.name}",
                 quiz_type="whole",
+                qualification_id=qualification.id,
                 subject_id=None,
                 chapter_id=None,
                 date_created=datetime.now(),
@@ -215,6 +216,7 @@ def create_quizzes_and_questions():
                     subject_quiz = Quiz(
                         title=f"{subject.name} Quiz {i+1} for {qualification.name}",
                         quiz_type="subject",
+                        qualification_id=qualification.id,
                         subject_id=subject.id,
                         chapter_id=None,
                         date_created=datetime.now(),
@@ -235,6 +237,7 @@ def create_quizzes_and_questions():
                         chapter_quiz = Quiz(
                             title=f"{chapter.name} Quiz {i+1} for {subject.name}",
                             quiz_type="chapter",
+                            qualification_id=qualification.id,
                             subject_id=subject.id,
                             chapter_id=chapter.id,
                             date_created=datetime.now(),

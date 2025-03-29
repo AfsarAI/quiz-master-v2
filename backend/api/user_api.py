@@ -1,13 +1,24 @@
 from flask import request, send_from_directory
-from flask_restful import Resource, marshal_with
+from flask_restful import Resource, marshal, marshal_with
+from flask_security import auth_required
 from tasks import create_csv_file
-from models import Quiz, RecentActivity, User, Score
+from models import Chapter, Quiz, RecentActivity, User, Score, UserSubjects
 from datetime import datetime, timedelta
 from celery.result import AsyncResult
 from models import db, User, Score
-from .fields_definitions import score_fields, subjects_fields, quizzes_fields
+from .fields_definitions import score_fields, subjects_fields, quizzes_fields, user_fields
 
 
+# for profile page
+class UserByIDResource(Resource):
+    @marshal_with(user_fields)
+    @auth_required('token')
+    def get(self, user_id):
+        user = User.query.get(user_id)
+        return user
+    
+
+#for home page
 class UserStatsResource(Resource):
     def get(self, user_id):
         user = User.query.get(user_id)
@@ -53,7 +64,6 @@ class UserStatsResource(Resource):
             ]
         }, 200
 
-
 class UpcomingQuizzesResource(Resource):
     # @auth_required()
     @marshal_with(quizzes_fields)
@@ -62,35 +72,65 @@ class UpcomingQuizzesResource(Resource):
         # data = [{"id": quiz.id, "title": quiz.title, "subject": quiz.quiz_type, "date": str(quiz.date_created)} for quiz in quizzes]
         return quizzes, 200
 
-class UserSubjectsResource(Resource):
-    # @auth_required()
-    @marshal_with(subjects_fields)
-    def get(self, user_id):
-        user = User.query.get(user_id)
-        if not user:
-            return {"error": "User not found"}, 404
-        subjects = user.subjects
-        return subjects, 200
-
-
 class QuizScoresResource(Resource):
-    @marshal_with(score_fields)
     def get(self, user_id):
         user_scores = Score.query.filter_by(user_id=user_id).order_by(Score.attempt_date.asc()).all()
         if not user_scores:
             return {"message": "No scores available"}, 404
-        return user_scores, 200
 
+        # Marshal karna sirf tab hoga jab data milega
+        return marshal(user_scores, score_fields), 200
 
-class UserAllQuizzesResource(Resource):
-    # @auth_required()
-    @marshal_with(quizzes_fields)
-    def get(self):
-        quizzes = Quiz.query.all()
-        return quizzes, 200
     
 
+# For quiz page
+class UserAllQuizzesResource(Resource):
+    @auth_required('token')
+    @marshal_with(quizzes_fields)
+    def get(self, user_id):
+        # Fetch user details
+        user = User.query.get(user_id)
+        if not user:
+            return {'message': 'User not found'}, 404
+        if not user.qualification_id:
+            return {'message': 'User qualification not set'}, 404
+
+        # Fetch user selected subjects using subquery
+        user_subjects = db.session.query(UserSubjects.subject_id).filter_by(user_id=user_id).scalar_subquery()
+
+        # Get quizzes using explicit select to avoid warnings
+        quizzes = db.session.query(Quiz).filter(
+            db.or_(
+                db.and_(
+                    Quiz.quiz_type == 'whole',
+                    Quiz.qualification_id == user.qualification_id
+                ),
+                db.and_(
+                    Quiz.quiz_type == 'subject',
+                    Quiz.subject_id.in_(user_subjects)
+                ),
+                db.and_(
+                    Quiz.quiz_type == 'chapter',
+                    Quiz.chapter.has(
+                        Chapter.subject_id.in_(user_subjects)
+                    )
+                )
+            )
+        ).all()
+        
+        if not quizzes:
+            return {"message": "No quizzes available"}, 404
+        
+        # Calculate attempt count for each quiz
+        for quiz in quizzes:
+            quiz.attempt_count = Score.query.filter_by(user_id=user_id, quiz_id=quiz.id).count()
+
+        return quizzes, 200
+
+
+# For quiz portel page
 class UserQuizResource(Resource):
+    @auth_required('token')
     @marshal_with(quizzes_fields)
     def get(self, quiz_id):
         quiz = Quiz.query.get(quiz_id)
@@ -99,7 +139,6 @@ class UserQuizResource(Resource):
             return {"error": "Quiz not found"}, 404
         
         return quiz, 200
-
 
 class SubmitQuizResource(Resource):
     def post(self, quiz_id):
@@ -162,6 +201,8 @@ class SubmitQuizResource(Resource):
         return {"error": "Invalid data provided"}, 400
 
 
+
+# Backend things! (csv export)
 class TaskCSVResource(Resource):
     def get(self, user_id):
         task = create_csv_file.delay(user_id)

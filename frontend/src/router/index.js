@@ -132,6 +132,18 @@ const routes = [
     meta: { title: "Quiz-Result", requiresLogin: true, roles: ["user"] },
   },
   {
+    path: "/unauthorized",
+    name: "unauthorized",
+    component: () => import("../views/UnauthorizedView.vue"),
+    meta: { title: "Unauthorized" },
+  },
+  {
+    path: "/:catchAll(.*)",
+    name: "not-found",
+    component: () => import("../views/NotFoundView.vue"),
+    meta: { title: "Not Found" },
+  },
+  {
     path: "/",
     redirect: "/quiz-master",
   },
@@ -155,18 +167,32 @@ router.beforeEach((to, from, next) => {
       next("/login");
     } else {
       const userRole = store.state.user.roles[0]?.name;
+      const userId = store.state.user.id;
+
+      // Check for userId match
+      if (to.params.user_id && to.params.user_id != userId) {
+        alert("You are not authorized to access this user data.");
+        next("/unauthorized");
+        return;
+      }
+
       if (to.params.role !== userRole) {
+        alert("You are not authorized to access this page.");
         next("/unauthorized");
       } else {
-        if (
-          to.matched.some(
-            (record) =>
-              record.meta.roles && !record.meta.roles.includes(userRole)
-          )
-        ) {
-          alert("You do not have access to this page.");
-          next(false);
-          window.history.back();
+        // ** Redirect based on Role **
+        if (to.name === "dashboard") {
+          if (userRole === "admin") {
+            next({
+              name: "Overview",
+              params: { role: "admin", user_id: userId },
+            });
+          } else if (userRole === "user") {
+            next({
+              name: "userHome",
+              params: { role: "user", user_id: userId },
+            });
+          }
         } else {
           next();
         }
@@ -175,14 +201,15 @@ router.beforeEach((to, from, next) => {
   } else {
     next();
   }
-
-  // // Check if the route exists
-  // if (!to.matched.length) {
-  //   alert("The page you are trying to access does not exist on our website.");
-  //   next(false);
-  //   window.history.back();
-  //   return;
-  // }
 });
+
+// // Check if the route exists
+// if (!to.matched.length) {
+//   alert("The page you are trying to access does not exist on our website.");
+//   next(false);
+//   window.history.back();
+//   return;
+// }
+// });
 
 export default router;

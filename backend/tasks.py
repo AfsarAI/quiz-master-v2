@@ -1,11 +1,10 @@
 import csv
 from datetime import datetime, timedelta
-import os
 from celery import shared_task
-from jinja2 import Template
 from sqlalchemy import func
 from mail import send_email_template
-from models import db, Score, Quiz, User
+from models import UserQuizzes, db, Score, Quiz, User
+import requests
 
 @shared_task(name="csv_file", ignore_results=False)
 def create_csv_file(user_id):
@@ -40,15 +39,8 @@ def create_csv_file(user_id):
     return csvfilename
 
 
-# # second task
-# def render_html_template(template_name, context):
-#     template_path = os.path.join('templates', template_name)
-#     with open(template_path, 'r') as file:
-#         template = Template(file.read())
-#         return template.render(context)
-
 @shared_task(name="monthly_report", ignore_results=False)
-def monthly_report():
+def send_monthly_report():
     users = User.query.all()
     month = (datetime.now() - timedelta(days=1)).strftime('%B %Y')
     
@@ -78,10 +70,56 @@ def monthly_report():
 
         # Render HTML Email
         context = {'user_name': user.fullname, 'month': month, 'quizzes': quiz_data}
-        # html_content = render_html_template('monthly_report.html', context)
 
         # Send Email
         subject = f"Monthly Report - {month}"
         send_email_template(user.email, subject, 'templates/monthly_report.html', context, 'html')
 
     return "Monthly Reports Sent!"
+
+
+
+WEBHOOK_URL = "https://chat.googleapis.com/v1/spaces/AAAAPn0TVg0/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=Uzu7JnBKcZ6t9sI917kEGKW8PH5gmdGMdkvwISOJXdE"
+
+@shared_task(name="daily_reminder", ignore_results=False)
+def send_daily_reminder():
+    # Find users who haven't attempted any quiz in the last 7 days (excluding admin with ID 1)
+    last_week = datetime.now() - timedelta(days=7)
+    inactive_users = User.query.filter(
+        User.id != 1,  # Exclude Admin (assuming Admin has user_id = 1)
+        ~User.id.in_(
+            UserQuizzes.query
+            .filter(UserQuizzes.attempt_date >= last_week)
+            .with_entities(UserQuizzes.user_id)
+        )
+    ).all()
+
+    # Find top 5 recent quizzes created in the last week
+    recent_quizzes = Quiz.query.filter(Quiz.date_created >= last_week).limit(5).all()
+
+    # Send message using Google Chat Webhook
+    for user in inactive_users:
+        # Construct user-specific URL
+        quiz_links = [
+            f"- *{quiz.title}*\nLink: http://localhost:8080/quiz-master/user/{user.id}/dashboard/quiz/{quiz.id}/interface\n"
+            for quiz in recent_quizzes
+        ]
+
+        # Message content
+        quiz_list_text = "\n".join(quiz_links)
+        quiz_url = f"http://localhost:8080/quiz-master/user/{user.id}/dashboard/quiz"
+        message_data = {
+            "text": f"*Hello {user.fullname},*\n\nWe noticed you haven't taken any quizzes recently. "
+                    f"Here are some new quizzes you might be interested in:\n\n"
+                    f"{quiz_list_text}\n\n"
+                    f"To see all available quizzes, (click here on link given below)\nLink: {quiz_url}\n\n"
+                    f"Best regards,\nQuizMaster Team"
+        }
+
+        # Send the request
+        response = requests.post(WEBHOOK_URL, json=message_data)
+        if response.status_code == 200:
+            print(f"Reminder sent to {user.fullname} via Google Chat")
+        else:
+            print(f"Failed to send reminder to {user.fullname}. Error: {response.text}")
+    return "Daily reminders sent!"

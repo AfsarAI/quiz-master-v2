@@ -1,9 +1,25 @@
 <template>
   <div class="container container-fluid py-4">
-    <h1 class="mb-4">User Quizzes</h1>
+    <div class="row">
+      <div class="col-md-6">
+        <h1 class="mb-4">User Quizzes</h1>
+      </div>
+      <div v-if="!loading" class="col-md-6">
+        <input
+          v-model="searchQuery"
+          type="text"
+          class="form-control"
+          placeholder="Search quizzes..."
+        />
+      </div>
+    </div>
 
     <div v-if="loading" class="text-center">
-      <p class="fs-5">Loading...</p>
+      <div class="position-absolute top-50 start-50 translate-middle">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+      </div>
     </div>
 
     <div v-else>
@@ -11,19 +27,30 @@
         No quizzes available.
       </div>
       <div v-else class="row g-4">
-        <div class="col-md-4" v-for="quiz in quizzes" :key="quiz.id">
+        <div class="col-md-4" v-for="quiz in filteredQuizzes" :key="quiz.id">
           <div class="card quiz-card h-100">
             <div class="card-body d-flex flex-column">
-              <h5 class="card-title">{{ quiz.title }}</h5>
-              <p class="card-text text-muted">
-                <strong>Quiz Type:</strong> {{ quiz.quiz_type }}
-              </p>
-              <p class="card-text text-muted">
-                <strong>Subject:</strong> {{ quiz.subject?.name || "N/A" }}
-              </p>
-              <p class="card-text text-muted">
-                <strong>Chapter:</strong> {{ quiz.chapter?.name || "N/A" }}
-              </p>
+              <div class="d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">{{ quiz.title }}</h5>
+                <span
+                  class="badge rounded-circle text-white d-flex justify-content-center align-items-center"
+                  style="background-color: red; width: 30px; height: 30px"
+                >
+                  {{ quiz.attempt_count }}
+                </span>
+              </div>
+              <div class="p-2">
+                <p class="card-text text-muted">
+                  <strong>Quiz Type:</strong> {{ quiz.quiz_type }}
+                </p>
+                <p class="card-text text-muted">
+                  <strong>Subject:</strong> {{ quiz.subject?.name || "N/A" }}
+                </p>
+                <p class="card-text text-muted">
+                  <strong>Chapter:</strong> {{ quiz.chapter?.name || "N/A" }}
+                </p>
+              </div>
+
               <div
                 class="d-flex justify-content-center align-items-center gap-3 my-2"
               >
@@ -56,7 +83,7 @@
 </template>
 
 <script>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, computed } from "vue";
 import { useStore } from "vuex";
 import { useRouter } from "vue-router";
 
@@ -66,6 +93,7 @@ export default {
     const router = useRouter();
     const quizzes = ref([]);
     const loading = ref(false);
+    const searchQuery = ref("");
 
     const userId = ref(null);
     const role = ref(null);
@@ -80,7 +108,14 @@ export default {
       loading.value = true;
       try {
         const response = await fetch(
-          "http://localhost:5000/api/user/dashboard/all/quizzes"
+          `http://localhost:5000/api/user/${userId.value}/dashboard/all/quizzes`,
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              "Authentication-Token": store.state.user?.token || "",
+            },
+          }
         );
         if (!response.ok) {
           throw new Error("Failed to fetch quizzes");
@@ -92,6 +127,19 @@ export default {
         loading.value = false;
       }
     };
+
+    // Search filter
+    const filteredQuizzes = computed(() => {
+      return quizzes.value.filter(
+        (quiz) =>
+          quiz.title
+            ?.toLowerCase()
+            .includes(searchQuery.value?.toLowerCase() || "") ||
+          quiz.quiz_type
+            ?.toLowerCase()
+            .includes(searchQuery.value?.toLowerCase() || "")
+      );
+    });
 
     const navigateToQuiz = (quizId) => {
       const routeRole = router.currentRoute.value.params.role;
@@ -115,12 +163,18 @@ export default {
       quizzes,
       loading,
       navigateToQuiz,
+      searchQuery,
+      filteredQuizzes,
     };
   },
 };
 </script>
 
 <style scoped>
+.spinner-border {
+  width: 3rem;
+  height: 3rem;
+}
 .container {
   max-width: 1200px;
   margin: 0 auto;

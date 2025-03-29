@@ -5,7 +5,7 @@ export default createStore({
   state: {
     isDarkMode: JSON.parse(localStorage.getItem("isDarkMode")) || false,
     user: {
-      auth_token: null,
+      token: null,
       roles: [],
       loggedIn: false,
       id: null,
@@ -34,7 +34,7 @@ export default createStore({
     // User state
     setUser(state, user) {
       state.user = {
-        auth_token: user.token,
+        token: user.token,
         roles: user.roles || [],
         loggedIn: true,
         id: user.id,
@@ -50,7 +50,7 @@ export default createStore({
 
     removeUser(state) {
       state.user = {
-        auth_token: null,
+        token: null,
         roles: [],
         loggedIn: false,
         id: null,
