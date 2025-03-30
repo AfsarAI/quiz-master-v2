@@ -6,3 +6,7 @@ frontend/node_modules/
 
 # Ignore Python cache
 __pycache__/
+
+#redis server ke file
+*.rdb
+*.aof

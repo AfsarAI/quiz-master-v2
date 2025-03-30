@@ -1,16 +1,17 @@
+from flask import current_app as app
 from flask import jsonify, request
 from flask_restful import Resource, marshal_with
 from flask_security import auth_required
-from models import Chapter, Qualification, Question, Quiz, RecentActivity, Subject, User, Score
+from models import Chapter, Qualification, Question, Quiz, RecentActivity, Subject, User, Score, UserQuizzes
 from datetime import datetime, timedelta
 from sqlalchemy import func
-from flask import current_app as app
 from models import db, User, Score
 from .fields_definitions import activity_fields, qual_fields, score_fields, subjects_fields, user_fields, quizzes_fields, chapters_fields
-
-
+from .user_api import add_recent_activity
+cache = app.cache
 
 class AdminStatsResource(Resource):
+    @auth_required('token')
     def get(self):
         total_users = User.query.count()
         active_quizzes = Score.query.filter_by(active=True).count()
@@ -35,22 +36,17 @@ class AdminStatsResource(Resource):
    
 
 class AllRecentActivityResource(Resource):
+    @auth_required('token')
     @marshal_with(activity_fields)
     def get(self):
         one_week_ago = datetime.now() - timedelta(days=7)
         activities = RecentActivity.query.filter(RecentActivity.timestamp >= one_week_ago).order_by(RecentActivity.timestamp.desc()).limit(10).all()
         return activities
 
-class RecentActivityResource(Resource):
-    def post(self):
-        data = request.json
-        new_activity = RecentActivity(user=data['user'], action=data['action'])
-        db.session.add(new_activity)
-        db.session.commit()
-        return jsonify({"message": "Activity logged successfully!"}), 201
 
 # Top Scorers api
 class TopScorersResource(Resource):
+    @auth_required('token')
     @marshal_with(score_fields)
     def get(self):
         top_scorers = db.session.query(Score).order_by(Score.score.desc()).limit(5).all()
@@ -65,12 +61,15 @@ class TopScorersResource(Resource):
     
 # User api
 class AllUsersResource(Resource):
+    @cache.cached(timeout=300, key_prefix='users_data')
+    @auth_required('token')
     @marshal_with(user_fields)
     def get(self):
         users = User.query.all()
         return users
 
 class UserStatusResource(Resource):
+    @auth_required('token')
     def put(self, user_id):
         try:
             # Get the user by ID
@@ -89,7 +88,11 @@ class UserStatusResource(Resource):
             # Update user active status
             user.active = active_status
             db.session.commit()
+
+            add_recent_activity(0, f"{user.fullname} {'Unblocked' if active_status else 'Blocked'} by Admin")
             
+            cache.delete('users_data')
+            cache.delete('userid_data')
             # Return updated user data
             return {
                 "id": user.id,
@@ -105,6 +108,7 @@ class UserStatusResource(Resource):
         
 
 class UserEngagementResource(Resource):
+    @auth_required('token')
     def get(self):
         try:
             # Set time range (e.g., last 30 days)
@@ -139,33 +143,29 @@ class UserEngagementResource(Resource):
             return jsonify({'error': str(e)}), 500
 
 
-
-
-# All Scores api
-class AllScoresResource(Resource):
-    @marshal_with(score_fields)
-    def get(self):
-        scores = Score.query.all()
-        return scores
-
 # ------------------------------------------------------------------------------------------ #
 
 # Qualification api class for admin
 class AllQualificationsResource(Resource):
+    @auth_required('token')
     @marshal_with(qual_fields)
     def get(self):
         classes = Qualification.query.all()
         return classes
     
 class AddQualificationResource(Resource):
+    @auth_required('token')
     def post(self):
         data = request.get_json()
         new_qual = Qualification(name=data['name'], description=data.get('description', ''))
         db.session.add(new_qual)
         db.session.commit()
+
+        add_recent_activity(0, f"One Qualification Added by Admin")
         return {'message': 'Qualification added successfully!'}, 201
     
 class UpdateQualificationResource(Resource):
+    @auth_required('token')
     def put(self, qual_id):
         data = request.get_json()
         qualification = Qualification.query.get_or_404(qual_id)
@@ -175,41 +175,85 @@ class UpdateQualificationResource(Resource):
         qualification.description = data.get('description', '')
         
         db.session.commit()
+
+        add_recent_activity(0, f"One Qualification Edited by Admin")
         return {'message': 'Qualification updated successfully!'}, 200
     
 class DeleteQualificationResource(Resource):
+    @auth_required('token')
     def delete(self, qual_id):
         qualification = Qualification.query.get_or_404(qual_id)
         
-        # Delete associated subjects
-        Subject.query.filter_by(qualification_id=qual_id).delete()
+        # Find all subjects related to the qualification
+        subjects = Subject.query.filter_by(qualification_id=qual_id).all()
         
-        # Then delete the qualification
+        for subject in subjects:
+            # Find all chapters related to the subject
+            chapters = Chapter.query.filter_by(subject_id=subject.id).all()
+            
+            for chapter in chapters:
+                # Find and delete all quizzes related to the chapter
+                quizzes = Quiz.query.filter_by(chapter_id=chapter.id).all()
+                
+                for quiz in quizzes:
+                    # Delete associated scores
+                    Score.query.filter_by(quiz_id=quiz.id).delete()
+                    
+                    # Delete associated questions
+                    Question.query.filter_by(quiz_id=quiz.id).delete()
+                    
+                    # Delete UserQuizzes associations
+                    UserQuizzes.query.filter_by(quiz_id=quiz.id).delete()
+                    
+                    # Delete the quiz
+                    db.session.delete(quiz)
+                
+                # Delete the chapter
+                db.session.delete(chapter)
+            
+            # Delete any remaining subject-specific quizzes
+            quizzes = Quiz.query.filter_by(subject_id=subject.id).all()
+            for quiz in quizzes:
+                Score.query.filter_by(quiz_id=quiz.id).delete()
+                Question.query.filter_by(quiz_id=quiz.id).delete()
+                UserQuizzes.query.filter_by(quiz_id=quiz.id).delete()
+                db.session.delete(quiz)
+            
+            # Delete the subject
+            db.session.delete(subject)
+        
+        # Finally, delete the qualification
         db.session.delete(qualification)
         db.session.commit()
         
-        return {'message': 'Qualification deleted successfully!'}, 200
+        add_recent_activity(0, f"One Qualification deleted by Admin")
+        return {'message': 'Qualification and associated data deleted successfully!'}, 200
+
     
 
 
 # Subject api class for admin
-
 class AllSubjectsResource(Resource):
+    @auth_required('token')
     @marshal_with(subjects_fields)
     def get(self):
         subjects = Subject.query.all()
         return subjects
     
 class AddSubjectResource(Resource):
+    @auth_required('token')
     def post(self):
         data = request.get_json()
         print(data)
         new_subject = Subject(name=data['name'], description=data.get('description', ''), qualification_id=data['qualId'])
         db.session.add(new_subject)
         db.session.commit()
+
+        add_recent_activity(0, f"One Subject added by Admin")
         return {'message': 'Subject added successfully!'}, 201
 
 class UpdateSubjectResource(Resource):
+    @auth_required('token')
     def put(self, subject_id):
         data = request.get_json()
         subject = Subject.query.get_or_404(subject_id)
@@ -220,38 +264,75 @@ class UpdateSubjectResource(Resource):
         subject.qualification_id = data['qualId']
         
         db.session.commit()
+
+        add_recent_activity(0, f"One Subject edited by Admin")
         return {'message': 'Subject updated successfully!'}, 200
     
 class DeleteSubjectResource(Resource):
+    @auth_required('token')
     def delete(self, subject_id):
         subject = Subject.query.get_or_404(subject_id)
         
-        # Delete associated chapters
-        Chapter.query.filter_by(subject_id=subject_id).delete()
+        # Find all chapters related to the subject
+        chapters = Chapter.query.filter_by(subject_id=subject_id).all()
         
-        # Then delete the subject
+        for chapter in chapters:
+            # Find and delete all quizzes related to the chapter
+            quizzes = Quiz.query.filter_by(chapter_id=chapter.id).all()
+            
+            for quiz in quizzes:
+                # Delete associated scores
+                Score.query.filter_by(quiz_id=quiz.id).delete()
+                
+                # Delete associated questions
+                Question.query.filter_by(quiz_id=quiz.id).delete()
+                
+                # Delete UserQuizzes associations
+                UserQuizzes.query.filter_by(quiz_id=quiz.id).delete()
+                
+                # Delete the quiz
+                db.session.delete(quiz)
+            
+            # Delete the chapter
+            db.session.delete(chapter)
+        
+        # Delete any remaining subject-specific quizzes
+        quizzes = Quiz.query.filter_by(subject_id=subject_id).all()
+        for quiz in quizzes:
+            Score.query.filter_by(quiz_id=quiz.id).delete()
+            Question.query.filter_by(quiz_id=quiz.id).delete()
+            UserQuizzes.query.filter_by(quiz_id=quiz.id).delete()
+            db.session.delete(quiz)
+        
+        # Finally, delete the subject
         db.session.delete(subject)
         db.session.commit()
         
-        return {'message': 'Subject deleted successfully!'}, 200
+        add_recent_activity(0, f"One Subject deleted by Admin")
+        return {'message': 'Subject and associated data deleted successfully!'}, 200
 
 
 # Chapter api class for admin
 class AllChaptersResource(Resource):
+    @auth_required('token')
     @marshal_with(chapters_fields)
     def get(self):
         chapters = Chapter.query.all()
         return chapters
 
 class AddChapterResource(Resource):
+    @auth_required('token')
     def post(self):
         data = request.get_json()
         new_chapter = Chapter(name=data['name'], description=data.get('description', ''), subject_id=data['subjectId'])
         db.session.add(new_chapter)
         db.session.commit()
+
+        add_recent_activity(0, f"One Chapter added by Admin")
         return {'message': 'Chapter added successfully!'}, 201
 
 class UpdateChapterResource(Resource):
+    @auth_required('token')
     def put(self, chapter_id):
         data = request.get_json()
         chapter = Chapter.query.get_or_404(chapter_id)
@@ -262,38 +343,65 @@ class UpdateChapterResource(Resource):
         chapter.subject_id = data['subjectId']
         
         db.session.commit()
+
+        add_recent_activity(0, f"One Chapter edited by Admin")
         return {'message': 'Chapter updated successfully!'}, 200
+    
 class DeleteChapterResource(Resource):
+    @auth_required('token')
     def delete(self, chapter_id):
         chapter = Chapter.query.get_or_404(chapter_id)
         
-        # Delete associated quizzes
-        Quiz.query.filter_by(chapter_id=chapter_id).delete()
+        # Find all quizzes related to the chapter
+        quizzes = Quiz.query.filter_by(chapter_id=chapter_id).all()
+        
+        for quiz in quizzes:
+            # Delete associated scores
+            Score.query.filter_by(quiz_id=quiz.id).delete()
+            
+            # Delete associated questions
+            Question.query.filter_by(quiz_id=quiz.id).delete()
+            
+            # Delete UserQuizzes associations
+            UserQuizzes.query.filter_by(quiz_id=quiz.id).delete()
+            
+            # Delete the quiz
+            db.session.delete(quiz)
         
         # Then delete the chapter
         db.session.delete(chapter)
         db.session.commit()
         
-        return {'message': 'Chapter deleted successfully!'}, 200
+        add_recent_activity(0, f"One Chapter deleted by Admin")
+        return {'message': 'Chapter and associated data deleted successfully!'}, 200
 
 
 
 # Quiz api class for admin
 class AdminAllQuizzesResource(Resource):
-    @app.cache.cached(timeout=60)
+    @cache.cached(timeout=60, key_prefix='quiz_data')
+    @auth_required('token')
     @marshal_with(quizzes_fields)
     def get(self):
         quizzes = Quiz.query.all()
-        print(quizzes)
         return quizzes
     
 class AddQuizResource(Resource):
+    @auth_required('token')
     def post(self):
         data = request.get_json()
         print(data)
         
         # Pehle Quiz create karo
-        new_quiz = Quiz(title=data['title'], quiz_type=data['quizType'], subject_id=data['subjectId'], chapter_id=data['chapterId'], duration=10)
+        new_quiz = Quiz(
+                        title=data['title'],
+                        quiz_type=data['quizType'],
+                        qualification_id=data['qualificationId'],
+                        subject_id=data['subjectId'],
+                        chapter_id=data['chapterId'],
+                        duration=data['duration']
+                    )
+
         db.session.add(new_quiz)
         db.session.flush()  # Taake id mil sake bina commit kiye
 
@@ -309,17 +417,21 @@ class AddQuizResource(Resource):
                 option2=q['options'][1]['text'],
                 option3=q['options'][2]['text'],
                 option4=q['options'][3]['text'],
-                correct_option=q['correctAnswer']
+                correct_option=q['correctAnswer'] + 1  # Convert from 0-based to 1-based indexing
             )
             db.session.add(new_question)
 
         db.session.commit()  # Sab data ek saath save hoga
 
+        add_recent_activity(0, f"A new quiz added by admin")
+        cache.delete('quiz_data')
+        cache.delete('userquiz_data')
         return {"message": "Quiz and questions created successfully!", "quiz_id": new_quiz.id}, 201
 
 
 # Add this new API endpoint to your resources file
 class QuizDetailResource(Resource):
+    @auth_required('token')
     @marshal_with(quizzes_fields)
     def get(self, quiz_id):
         quiz = Quiz.query.get(quiz_id)
@@ -329,6 +441,7 @@ class QuizDetailResource(Resource):
 
 # Also update the edit functionality
 class EditQuizResource(Resource):
+    @auth_required('token')
     def put(self, quiz_id):
         data = request.get_json()
         quiz = Quiz.query.get_or_404(quiz_id)
@@ -336,8 +449,10 @@ class EditQuizResource(Resource):
         # Update quiz details
         quiz.title = data['title']
         quiz.quiz_type = data['quizType']
+        quiz.qualification_id = data.get('qualificationId')
         quiz.subject_id = data.get('subjectId')
         quiz.chapter_id = data.get('chapterId')
+        quiz.duration = data['duration']
         
         # Delete existing questions
         Question.query.filter_by(quiz_id=quiz_id).delete()
@@ -351,23 +466,37 @@ class EditQuizResource(Resource):
                 option2=q['options'][1]['text'],
                 option3=q['options'][2]['text'],
                 option4=q['options'][3]['text'],
-                correct_option=q['correctAnswer'] + 1  # Adjust from 0-based to 1-based indexing
+                correct_option=q['correctAnswer'] + 1  # Keep this conversion consistent
             )
             db.session.add(new_question)
             
         db.session.commit()
+
+        add_recent_activity(0, f"One quiz edited by admin")
+        cache.delete('quiz_data')
+        cache.delete('userquiz_data')
         return {"message": "Quiz updated successfully", "quiz_id": quiz_id}, 200
 
 
 class DeleteQuizResource(Resource):
+    @auth_required('token')
     def delete(self, quiz_id):
         quiz = Quiz.query.get_or_404(quiz_id)
         
-        # Delete associated questions first
+        # Delete associated scores
+        Score.query.filter_by(quiz_id=quiz_id).delete()
+
+        # Delete associated questions
         Question.query.filter_by(quiz_id=quiz_id).delete()
         
+        # Delete UserQuizzes associations
+        UserQuizzes.query.filter_by(quiz_id=quiz_id).delete()
+
         # Then delete the quiz
         db.session.delete(quiz)
         db.session.commit()
         
-        return {"message": "Quiz deleted successfully"}, 200
+        add_recent_activity(0, f"One quiz deleted by admin")
+        cache.delete('quiz_data')
+        cache.delete('userquiz_data')
+        return {"message": "Quiz and associated data deleted successfully"}, 200

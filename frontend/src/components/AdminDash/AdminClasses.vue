@@ -293,10 +293,12 @@
 <script setup>
 import { ref, reactive, onMounted, computed } from "vue";
 import { useRouter } from "vue-router";
+import { useStore } from "vuex";
 import { Modal } from "bootstrap";
 
 const apiBase = "http://127.0.0.1:5000/api/admin/dashboard";
 const router = useRouter();
+const store = useStore();
 
 const actions = [
   {
@@ -358,11 +360,23 @@ let deleteItemInfo = { type: "", id: null };
 
 const fetchData = async () => {
   try {
+    const headers = {
+      "Content-Type": "application/json",
+      "Authentication-Token": store.state.user?.token,
+    };
+
     const [qualRes, subjectRes, chapterRes] = await Promise.all([
-      fetch(`${apiBase}/all/qualifications`).then((res) => res.json()),
-      fetch(`${apiBase}/all/subjects`).then((res) => res.json()),
-      fetch(`${apiBase}/all/chapters`).then((res) => res.json()),
+      fetch(`${apiBase}/all/qualifications`, { method: "GET", headers }).then(
+        (res) => res.json()
+      ),
+      fetch(`${apiBase}/all/subjects`, { method: "GET", headers }).then((res) =>
+        res.json()
+      ),
+      fetch(`${apiBase}/all/chapters`, { method: "GET", headers }).then((res) =>
+        res.json()
+      ),
     ]);
+
     Qualifications.value = qualRes;
     Subjects.value = subjectRes;
     Chapters.value = chapterRes;
@@ -444,17 +458,27 @@ const confirmDelete = async () => {
 
     const response = await fetch(`${apiBase}/${endpoint}`, {
       method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        "Authentication-Token": store.state.user?.token,
+      },
     });
 
     if (!response.ok) {
       throw new Error("Network response was not ok");
     }
 
+    store.dispatch("addToast", {
+      message: `One ${deleteItemInfo.type} deleted successfully!`,
+      type: "success",
+    });
+
     // Refresh data after deletion
     await fetchData();
     deleteModal.hide();
   } catch (error) {
     console.error("Error deleting item:", error);
+    alert("Error in deleting a item");
   }
 };
 
@@ -499,6 +523,7 @@ const submitForm = async () => {
       method: method,
       headers: {
         "Content-Type": "application/json",
+        "Authentication-Token": store.state.user?.token,
       },
       body: JSON.stringify(payload),
     });
@@ -506,6 +531,13 @@ const submitForm = async () => {
     if (!response.ok) {
       throw new Error("Network response was not ok");
     }
+
+    store.dispatch("addToast", {
+      message: `One ${currentForm.type} ${
+        currentForm.isEditing ? "Edited" : "Added"
+      } Successfully!`,
+      type: "success",
+    });
 
     // Refresh data
     await fetchData();

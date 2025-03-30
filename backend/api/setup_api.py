@@ -1,29 +1,24 @@
 from flask_restful import Api
-from .admin_api import AddQualificationResource, AddQuizResource, AddSubjectResource, AdminAllQuizzesResource, AdminStatsResource, AllChaptersResource, AllQualificationsResource, AllRecentActivityResource, AllSubjectsResource, AddChapterResource, AllUsersResource, DeleteChapterResource, DeleteQualificationResource, DeleteQuizResource, DeleteSubjectResource, EditQuizResource, QuizDetailResource, RecentActivityResource, TopScorersResource, UpdateChapterResource, UpdateQualificationResource, UpdateSubjectResource, UserEngagementResource, UserStatusResource
+from .admin_api import AddQualificationResource, AddQuizResource, AddSubjectResource, AdminAllQuizzesResource, AdminStatsResource, AllChaptersResource, AllQualificationsResource, AllRecentActivityResource, AllSubjectsResource, AddChapterResource, AllUsersResource, DeleteChapterResource, DeleteQualificationResource, DeleteQuizResource, DeleteSubjectResource, EditQuizResource, QuizDetailResource, TopScorersResource, UpdateChapterResource, UpdateQualificationResource, UpdateSubjectResource, UserEngagementResource, UserStatusResource
 from .user_api import QuizScoresResource, SubmitQuizResource, TaskCSVResource, TaskStatusResource, UpcomingQuizzesResource, UserAllQuizzesResource, UserByIDResource, UserQuizResource, UserStatsResource
-from .auth_api import UserRegisterResource, UserLoginResource
-from .subject_api import SubjectResource, SubjectsWithQualificationResource
-from .qual_api import QualificationResource, QualificationSubjectResource
+from .auth_api import QualificationResource, SubjectsWithQualificationResource, UserRegisterResource, UserLoginResource
 
 api = Api(prefix='/api')
 
-#users routes
+
+# Auth API
+#qual routes for registration page
+api.add_resource(QualificationResource, '/qualifications')
+#subject for registeration page
+api.add_resource(SubjectsWithQualificationResource, '/qualifications/<int:qualification_id>/subjects')
+# user login & register api
 api.add_resource(UserRegisterResource, '/user/register', methods=['POST'])
 api.add_resource(UserLoginResource, '/user/login', methods=['POST'])
-
-#subjests routes
-api.add_resource(SubjectResource, '/subjects')
-api.add_resource(SubjectsWithQualificationResource, '/qualifications/<int:qualification_id>/subjects')
-
-#qual routes
-api.add_resource(QualificationResource, '/qualifications')
-api.add_resource(QualificationSubjectResource, '/create/qualification-subjects')
 
 
 #Admin Dashboard
 api.add_resource(AdminStatsResource, '/admin/dashboard/stats', methods=['GET'])
-api.add_resource(AllRecentActivityResource, '/admin/dashboard/get/recent-activity/data', methods=['GET'])
-api.add_resource(RecentActivityResource, '/admin/dashboard/post/recent-activity/data', methods=['POST'])
+api.add_resource(AllRecentActivityResource, '/admin/dashboard/recent-activity/data', methods=['GET'])
 api.add_resource(TopScorersResource, '/admin/dashboard/top-scorers', methods=['GET'])
 
 # user routes
@@ -55,6 +50,7 @@ api.add_resource(AddQuizResource, '/admin/dashboard/add/quiz', methods=['POST'])
 api.add_resource(QuizDetailResource, '/admin/dashboard/quiz/<int:quiz_id>', methods=['GET'])
 api.add_resource(EditQuizResource, '/admin/dashboard/<int:quiz_id>', methods=['PUT'])
 api.add_resource(DeleteQuizResource, '/admin/dashboard/quiz/<int:quiz_id>', methods=['DELETE'])
+
 
 
 #User Dashboard

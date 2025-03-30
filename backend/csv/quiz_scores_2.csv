@@ -1,5 +1,13 @@
 Sr No.,Quiz ID,Quiz Name,Quiz Type,Subject Name,Chapter Name,Score,Time Taken,Attempt Date
-1,2,Mathematics Quiz 1 for Class 6,subject,Mathematics,N/A,0.0,12,2025-03-28 01:21:38.692000
-2,2,Mathematics Quiz 1 for Class 6,subject,Mathematics,N/A,5.0,12,2025-03-28 01:22:38.467000
-3,23,Environment Quiz 2 for Science,chapter,Science,Environment,2.0,13,2025-03-28 02:02:37.738000
-4,32,Civics Quiz 1 for Social Studies,chapter,Social Studies,Civics,1.0,13,2025-03-28 13:09:28.334000
+1,672,General Quiz for BS Online,whole,N/A,N/A,4.0,22,2025-03-29 08:22:59.784000
+2,697,Web Development Quiz 1 for BS Online,subject,Web Development,N/A,0.0,12,2025-03-29 08:23:40.800000
+3,672,General Quiz for BS Online,whole,N/A,N/A,1.0,11,2025-03-29 15:19:40.377000
+4,697,Web Development Quiz 1 for BS Online,subject,Web Development,N/A,2.0,11,2025-03-29 15:21:53.644000
+5,672,General Quiz for BS Online,whole,N/A,N/A,2.0,27,2025-03-29 15:22:17.168000
+6,698,Web Development Quiz 2 for BS Online,subject,Web Development,N/A,1.0,11,2025-03-29 15:23:32.326000
+7,720,Support Vector Machines Quiz 2 for Machine Learning,chapter,Machine Learning,Support Vector Machines,3.0,11,2025-03-29 15:23:58.030000
+8,720,Support Vector Machines Quiz 2 for Machine Learning,chapter,Machine Learning,Support Vector Machines,5.0,16,2025-03-29 15:24:23.592000
+9,699,HTML/CSS Quiz 1 for Web Development,chapter,Web Development,HTML/CSS,0.0,11,2025-03-29 17:14:05.248000
+10,700,HTML/CSS Quiz 2 for Web Development,chapter,Web Development,HTML/CSS,0.0,12,2025-03-30 08:51:03.433000
+11,700,HTML/CSS Quiz 2 for Web Development,chapter,Web Development,HTML/CSS,3.0,12,2025-03-30 08:51:55.082000
+12,733,Try,whole,N/A,N/A,5.0,13,2025-03-30 10:42:22.605000

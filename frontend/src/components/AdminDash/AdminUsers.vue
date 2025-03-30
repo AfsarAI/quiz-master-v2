@@ -1,91 +1,111 @@
 <template>
   <div class="admin-users container-fluid py-4">
     <h2 class="mb-4">Manage Users</h2>
+    <div v-if="!isLoading">
+      <div v-if="users.length > 0">
+        <div class="row mb-4">
+          <div class="col-md-4">
+            <input
+              v-model="searchQuery"
+              type="text"
+              class="form-control"
+              placeholder="Search users..."
+            />
+          </div>
+          <div class="col-md-4">
+            <select v-model="roleFilter" class="form-select">
+              <option value="">All Roles</option>
+              <option value="user">Student</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <select v-model="statusFilter" class="form-select">
+              <option value="">All Status</option>
+              <option value="active">Active</option>
+              <option value="blocked">Blocked</option>
+            </select>
+          </div>
+        </div>
 
-    <div class="row mb-4">
-      <div class="col-md-4">
-        <input
-          v-model="searchQuery"
-          type="text"
-          class="form-control"
-          placeholder="Search users..."
-        />
-      </div>
-      <div class="col-md-4">
-        <select v-model="roleFilter" class="form-select">
-          <option value="">All Roles</option>
-          <option value="user">Student</option>
-          <option value="admin">Admin</option>
-        </select>
-      </div>
-      <div class="col-md-4">
-        <select v-model="statusFilter" class="form-select">
-          <option value="">All Status</option>
-          <option value="active">Active</option>
-          <option value="blocked">Blocked</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
-      <div v-for="user in filteredUsers" :key="user.id" class="col">
-        <div class="card h-100" :class="{ 'border-danger': !user.active }">
-          <div class="card-body">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-              <h5 class="card-title mb-0">{{ user.fullname }}</h5>
-              <div>
-                <span
-                  :class="getRoleBadgeClass(user.roles[0]?.name)"
-                  class="me-2"
+        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+          <div v-for="user in filteredUsers" :key="user.id" class="col">
+            <div class="card h-100" :class="{ 'border-danger': !user.active }">
+              <div class="card-body">
+                <div
+                  class="d-flex justify-content-between align-items-center mb-3"
                 >
-                  {{
-                    user.roles[0]?.name === "user"
-                      ? "Student"
-                      : user.roles[0]?.name
-                  }}
-                </span>
-                <span v-if="!user.active" class="badge bg-danger">Blocked</span>
+                  <h5 class="card-title mb-0">{{ user.fullname }}</h5>
+                  <div>
+                    <span
+                      :class="getRoleBadgeClass(user.roles[0]?.name)"
+                      class="me-2"
+                    >
+                      {{
+                        user.roles[0]?.name === "user"
+                          ? "Student"
+                          : user.roles[0]?.name
+                      }}
+                    </span>
+                    <span v-if="!user.active" class="badge bg-danger"
+                      >Blocked</span
+                    >
+                  </div>
+                </div>
+                <div class="user-avatar mb-3">
+                  <img
+                    :src="
+                      user.profile_url ||
+                      'https://picsum.photos/300/300?random=' + user.id
+                    "
+                    alt="User Avatar"
+                    class="rounded-circle"
+                  />
+                </div>
+                <p class="card-text">
+                  <i class="bi bi-envelope me-2"></i>{{ user.email }}
+                </p>
+                <p class="card-text">
+                  <i class="bi bi-calendar-event me-2"></i>DOB: {{ user.dob }}
+                </p>
+                <p class="card-text">
+                  <i class="bi bi-telephone me-2"></i>{{ user.phone || "N/A" }}
+                </p>
+              </div>
+              <div class="card-footer">
+                <button
+                  class="btn btn-primary me-2"
+                  @click="viewUserDetails(user)"
+                >
+                  <i class="bi bi-eye me-1"></i>View Details
+                </button>
+                <button
+                  v-if="user.active"
+                  class="btn btn-outline-danger"
+                  @click="toggleUserStatus(user, false)"
+                >
+                  <i class="bi bi-ban me-1"></i>Block
+                </button>
+                <button
+                  v-else
+                  class="btn btn-outline-success"
+                  @click="toggleUserStatus(user, true)"
+                >
+                  <i class="bi bi-check-circle me-1"></i>Unblock
+                </button>
               </div>
             </div>
-            <div class="user-avatar mb-3">
-              <img
-                :src="
-                  user.profile_url ||
-                  'https://picsum.photos/300/300?random=' + user.id
-                "
-                alt="User Avatar"
-                class="rounded-circle"
-              />
-            </div>
-            <p class="card-text">
-              <i class="bi bi-envelope me-2"></i>{{ user.email }}
-            </p>
-            <p class="card-text">
-              <i class="bi bi-calendar-event me-2"></i>DOB: {{ user.dob }}
-            </p>
-            <p class="card-text">
-              <i class="bi bi-telephone me-2"></i>{{ user.phone || "N/A" }}
-            </p>
           </div>
-          <div class="card-footer">
-            <button class="btn btn-primary me-2" @click="viewUserDetails(user)">
-              <i class="bi bi-eye me-1"></i>View Details
-            </button>
-            <button
-              v-if="user.active"
-              class="btn btn-outline-danger"
-              @click="toggleUserStatus(user, false)"
-            >
-              <i class="bi bi-ban me-1"></i>Block
-            </button>
-            <button
-              v-else
-              class="btn btn-outline-success"
-              @click="toggleUserStatus(user, true)"
-            >
-              <i class="bi bi-check-circle me-1"></i>Unblock
-            </button>
-          </div>
+        </div>
+      </div>
+      <div v-else>
+        <p>No user data found</p>
+      </div>
+    </div>
+    <div v-else>
+      <div class="position-absolute top-50 start-50 translate-middle">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Loading...</span>
         </div>
       </div>
     </div>
@@ -278,18 +298,29 @@
 <script setup>
 import { ref, computed, onMounted } from "vue";
 import { Modal } from "bootstrap";
+import { useStore } from "vuex";
+
+const store = useStore();
 
 const users = ref([]);
 const searchQuery = ref("");
 const roleFilter = ref("");
 const statusFilter = ref("");
 const selectedUser = ref(null);
+const isLoading = ref(false);
 let userDetailsModal;
 
 // Fetch users from API
 const fetchUsers = async () => {
   try {
-    const response = await fetch("http://localhost:5000/api/all/users/data");
+    isLoading.value = true;
+    const response = await fetch("http://localhost:5000/api/all/users/data", {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "Authentication-Token": store.state.user?.token,
+      },
+    });
     const data = await response.json();
 
     console.log("API Response:", data);
@@ -301,6 +332,8 @@ const fetchUsers = async () => {
     }
   } catch (error) {
     console.error("Error fetching users:", error);
+  } finally {
+    isLoading.value = false;
   }
 };
 
@@ -317,6 +350,7 @@ const toggleUserStatus = async (user, status) => {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
+            "Authentication-Token": store.state.user?.token,
           },
           body: JSON.stringify({ active: status }),
         }
@@ -334,7 +368,10 @@ const toggleUserStatus = async (user, status) => {
           selectedUser.value.active = status;
         }
 
-        alert(`User ${action}ed successfully!`);
+        store.dispatch("addToast", {
+          message: `User ${action}ed successfully!`,
+          type: "success",
+        });
       } else {
         alert(`Failed to ${action} user. Please try again.`);
       }

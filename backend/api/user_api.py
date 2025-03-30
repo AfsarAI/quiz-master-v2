@@ -1,3 +1,4 @@
+from flask import current_app as app
 from flask import request, send_from_directory
 from flask_restful import Resource, marshal, marshal_with
 from flask_security import auth_required
@@ -7,19 +8,38 @@ from datetime import datetime, timedelta
 from celery.result import AsyncResult
 from models import db, User, Score
 from .fields_definitions import score_fields, subjects_fields, quizzes_fields, user_fields
+cache = app.cache
+
+# Add recent activity
+def add_recent_activity(user_id, action):
+    try:
+        new_activity = RecentActivity(
+            user_id=user_id,
+            action=action,
+            timestamp=datetime.now()
+        )
+        db.session.add(new_activity)
+        db.session.commit()
+        print("Recent activity added successfully.")
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error adding recent activity: {e}")
 
 
 # for profile page
 class UserByIDResource(Resource):
-    @marshal_with(user_fields)
     @auth_required('token')
+    @cache.cached(timeout=300, key_prefix='userid_data')
+    @marshal_with(user_fields)
     def get(self, user_id):
         user = User.query.get(user_id)
         return user
     
 
+
 #for home page
 class UserStatsResource(Resource):
+    @auth_required('token')
     def get(self, user_id):
         user = User.query.get(user_id)
         
@@ -65,16 +85,16 @@ class UserStatsResource(Resource):
         }, 200
 
 class UpcomingQuizzesResource(Resource):
-    # @auth_required()
+    @auth_required()
     @marshal_with(quizzes_fields)
     def get(self):
-        quizzes = Quiz.query.filter(Quiz.date_created <= datetime.now()).limit(3).all()
-        # data = [{"id": quiz.id, "title": quiz.title, "subject": quiz.quiz_type, "date": str(quiz.date_created)} for quiz in quizzes]
+        quizzes = Quiz.query.filter(Quiz.date_created <= datetime.now()).limit(5).all()
         return quizzes, 200
 
 class QuizScoresResource(Resource):
+    @auth_required('token')
     def get(self, user_id):
-        user_scores = Score.query.filter_by(user_id=user_id).order_by(Score.attempt_date.asc()).all()
+        user_scores = Score.query.filter_by(user_id=user_id).order_by(Score.attempt_date.desc()).all()
         if not user_scores:
             return {"message": "No scores available"}, 404
 
@@ -86,6 +106,7 @@ class QuizScoresResource(Resource):
 # For quiz page
 class UserAllQuizzesResource(Resource):
     @auth_required('token')
+    @cache.cached(timeout=300, key_prefix='userquiz_data')
     @marshal_with(quizzes_fields)
     def get(self, user_id):
         # Fetch user details
@@ -128,6 +149,7 @@ class UserAllQuizzesResource(Resource):
         return quizzes, 200
 
 
+
 # For quiz portel page
 class UserQuizResource(Resource):
     @auth_required('token')
@@ -141,9 +163,11 @@ class UserQuizResource(Resource):
         return quiz, 200
 
 class SubmitQuizResource(Resource):
+    @auth_required('token')
     def post(self, quiz_id):
         data = request.get_json()
         user_id = data.get('userId')
+        user = User.query.get(user_id)
 
         if not user_id:
             return {"error": "User ID is required"}, 400
@@ -196,16 +220,24 @@ class SubmitQuizResource(Resource):
             attempt.time_taken = time_taken
             attempt.active = False
             db.session.commit()
+ 
+            # Add recent activity
+            add_recent_activity(user_id, f"{user.fullname} Completed a quiz")
+            cache.delete('userid_data')
             return {"message": "Quiz submitted successfully!"}, 200
 
         return {"error": "Invalid data provided"}, 400
 
 
 
+
 # Backend things! (csv export)
 class TaskCSVResource(Resource):
+    @auth_required('token')
     def get(self, user_id):
         task = create_csv_file.delay(user_id)
+        user = User.query.get(user_id)
+        add_recent_activity(user_id, f"{user.fullname} Downloaded the details of the quizzes he was given")
         return {"task_id": task.id, "message": "CSV generation started"}, 200
 
     
@@ -222,5 +254,7 @@ class TaskStatusResource(Resource):
             return send_from_directory('csv', csv_filename, as_attachment=True)
         elif task.state == 'FAILURE':
             return {"task_status": task.state, "error": str(task.info)}, 500
+        elif task.state == 'PENDING':
+            return {"task_status": task.state, "message": "Task is still in progress. Please check again later."}, 202
         else:
             return {"task_status": task.state}, 200

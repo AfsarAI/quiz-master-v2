@@ -3,7 +3,7 @@
     :data-bs-theme="isDarkMode ? 'dark' : 'light'"
     :class="[
       'navbar',
-      'nav-underline',
+      'nav',
       'navbar-expand-lg',
       'shadow',
       'sticky-top',
@@ -52,40 +52,13 @@
               </router-link>
             </li>
           </template>
+
           <template v-else>
-            <template v-if="isDashboardPage">
-              <li class="nav-item">
-                <router-link :to="dashboardLink" class="nav-link" exact
-                  >Dashboard</router-link
-                >
-              </li>
-              <li class="nav-item">
-                <router-link :to="ProfileLink" class="nav-link" exact
-                  >Profile</router-link
-                >
-              </li>
-              <li class="nav-item">
-                <a
-                  href="#"
-                  @click.prevent="logout"
-                  class="btn btn-outline-primary ms-2"
-                >
-                  Logout
-                </a>
-              </li>
-            </template>
-            <template v-else>
-              <li class="nav-item">
-                <router-link :to="dashboardLink" class="nav-link" exact
-                  >Dashboard</router-link
-                >
-              </li>
-              <li class="nav-item">
-                <router-link :to="ProfileLink" class="nav-link" exact
-                  >Profile</router-link
-                >
-              </li>
-            </template>
+            <li class="nav-item">
+              <router-link :to="dashboardLink" class="nav-link" exact
+                >Dashboard</router-link
+              >
+            </li>
           </template>
         </ul>
       </div>
@@ -96,14 +69,13 @@
 <script>
 import { computed } from "vue";
 import { useStore } from "vuex";
-import { useRouter, useRoute } from "vue-router";
+import { useRouter } from "vue-router";
 
 export default {
   name: "AppNavbar",
   setup() {
     const store = useStore();
     const router = useRouter();
-    const route = useRoute();
 
     const isDarkMode = computed(() => store.state.isDarkMode);
     const isLoggedIn = computed(() => store.state.user.loggedIn);
@@ -116,12 +88,6 @@ export default {
 
     const ProfileLink = computed(() => {
       return `/${userRole.value}/${userId.value}/dashboard/profile`;
-    });
-
-    // Compute if the current route is a dashboard page
-    const isDashboardPage = computed(() => {
-      const expectedDashboardPath = `/${userRole.value}/${userId.value}/dashboard`;
-      return route.path === expectedDashboardPath;
     });
 
     const toggleDarkMode = () => {
@@ -156,7 +122,6 @@ export default {
       userRole,
       dashboardLink,
       ProfileLink,
-      isDashboardPage,
       toggleDarkMode,
       logout,
     };

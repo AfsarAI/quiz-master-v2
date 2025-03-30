@@ -35,11 +35,11 @@
                 class="question-result"
                 :class="{
                   correct:
-                    results.userAnswers[index] === question.correct_option,
+                    results.userAnswers[index] === question.correct_option - 1,
                   incorrect:
                     results.userAnswers[index] !== null &&
                     results.userAnswers[index] !== undefined &&
-                    results.userAnswers[index] !== question.correct_option,
+                    results.userAnswers[index] !== question.correct_option - 1,
                   unanswered:
                     results.userAnswers[index] === null ||
                     results.userAnswers[index] === undefined,
@@ -48,7 +48,7 @@
                 {{
                   results.userAnswers[index] !== null &&
                   results.userAnswers[index] !== undefined
-                    ? results.userAnswers[index] === question.correct_option
+                    ? results.userAnswers[index] === question.correct_option - 1
                       ? "Correct"
                       : "Incorrect"
                     : "Not Attempted"
@@ -67,10 +67,10 @@
                 class="option-item"
                 :class="{
                   'user-selected': results.userAnswers[index] === optIndex,
-                  'correct-answer': question.correct_option === optIndex,
+                  'correct-answer': question.correct_option - 1 === optIndex,
                   'incorrect-answer':
                     results.userAnswers[index] === optIndex &&
-                    question.correct_option !== optIndex,
+                    question.correct_option - 1 !== optIndex,
                 }"
               >
                 <div class="option-marker">

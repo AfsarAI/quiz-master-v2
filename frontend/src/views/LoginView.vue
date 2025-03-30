@@ -161,25 +161,51 @@ export default {
           body: JSON.stringify(userData),
         });
 
+        const data = await response.json();
+
         if (!response.ok) {
-          // Handle invalid login scenario
-          handleError("Invalid email or password. Please try again.", "danger");
+          if (response.status === 403) {
+            // Handle inactive account error
+            handleError(
+              data.message ||
+                "Your account is inactive. Please contact support.",
+              "warning"
+            );
+          } else if (response.status === 404) {
+            // Handle user not found error
+            handleError(
+              data.message || "User not found. Please check your email.",
+              "danger"
+            );
+          } else if (response.status === 400) {
+            // Handle invalid password or other validation error
+            handleError(
+              data.message || "Invalid email or password. Please try again.",
+              "danger"
+            );
+          } else {
+            // Handle other unexpected errors
+            handleError(
+              "An unexpected error occurred. Please try again later.",
+              "danger"
+            );
+          }
           return;
         }
-
-        const data = await response.json();
-        console.log(data);
 
         // Validate the response for required fields
         if (data.token && data.roles) {
           handleSuccess(data);
         } else {
-          router.push("/");
+          handleError("Login failed. Please try again.", "danger");
         }
       } catch (error) {
         // Handle network or server error
-        handleError("An error occurred. Please try again later.", "danger");
-        console.log(error);
+        handleError(
+          "A network error occurred. Please try again later.",
+          "danger"
+        );
+        console.error(error);
       } finally {
         // Always stop the loading indicator
         isLoading.value = false;

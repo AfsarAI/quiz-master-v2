@@ -113,7 +113,7 @@ export default {
             method: "GET",
             headers: {
               "Content-Type": "application/json",
-              "Authentication-Token": store.state.user?.token || "",
+              "Authentication-Token": store.state.user?.token,
             },
           }
         );

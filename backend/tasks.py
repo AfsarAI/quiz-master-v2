@@ -119,7 +119,7 @@ def send_daily_reminder():
         # Send the request
         response = requests.post(WEBHOOK_URL, json=message_data)
         if response.status_code == 200:
-            print(f"Reminder sent to {user.fullname} via Google Chat")
+            return "Message sent to user via google chat"
         else:
-            print(f"Failed to send reminder to {user.fullname}. Error: {response.text}")
+            return "Failed to send reminder to user!"
     return "Daily reminders sent!"

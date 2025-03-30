@@ -9,7 +9,7 @@
             <div class="card-body">
               <h5 class="card-title">{{ quiz.title }}</h5>
               <p class="card-text">{{ quiz.description }}</p>
-              <a :href="'/quiz/' + quiz.id" class="btn btn-primary"
+              <a :href="'/quiz-master/login' + quiz.id" class="btn btn-primary"
                 >Start Quiz</a
               >
             </div>

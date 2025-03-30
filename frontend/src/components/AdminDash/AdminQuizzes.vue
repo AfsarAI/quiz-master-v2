@@ -109,7 +109,38 @@
                   </select>
                 </div>
 
-                <!-- Subject & Chapter Select -->
+                <!-- Qualification Select - Always visible -->
+                <div
+                  v-if="
+                    quizForm.quizType === 'subject' ||
+                    quizForm.quizType === 'chapter' ||
+                    quizForm.quizType === 'whole'
+                  "
+                  class="mb-3"
+                >
+                  <label for="qualificationId" class="form-label"
+                    >Qualification</label
+                  >
+                  <select
+                    class="form-select"
+                    id="qualificationId"
+                    v-model="quizForm.qualificationId"
+                    required
+                  >
+                    <option :value="null" disabled hidden>
+                      Select a Qualification
+                    </option>
+                    <option
+                      v-for="qual in Qualifications"
+                      :key="qual.id"
+                      :value="qual.id"
+                    >
+                      {{ qual.name }}
+                    </option>
+                  </select>
+                </div>
+
+                <!-- Subject Select - Only visible for subject and chapter types -->
                 <div
                   class="mb-3"
                   v-if="
@@ -117,7 +148,7 @@
                     quizForm.quizType === 'chapter'
                   "
                 >
-                  <label class="form-label mt-2">Subject</label>
+                  <label for="subjectId" class="form-label">Subject</label>
                   <select
                     class="form-select"
                     id="subjectId"
@@ -128,7 +159,7 @@
                       Select a Subject
                     </option>
                     <option
-                      v-for="sub in Subjects"
+                      v-for="sub in filteredSubjects"
                       :key="sub.id"
                       :value="sub.id"
                     >
@@ -136,10 +167,13 @@
                     </option>
                   </select>
                 </div>
+
+                <!-- Chapter Select - Only visible for chapter type -->
                 <div class="mb-3" v-if="quizForm.quizType === 'chapter'">
-                  <label class="form-label mt-2">Chapter</label>
+                  <label for="chapterId" class="form-label">Chapter</label>
                   <select
-                    class="form-control"
+                    class="form-select"
+                    id="chapterId"
                     v-model="quizForm.chapterId"
                     required
                   >
@@ -155,6 +189,7 @@
                     </option>
                   </select>
                 </div>
+
                 <div class="mb-3">
                   <label class="form-label">Questions</label>
                   <div
@@ -218,6 +253,22 @@
                     Add Question
                   </button>
                 </div>
+
+                <!-- Duration field -->
+                <div class="mb-3">
+                  <label for="quizDuration" class="form-label"
+                    >Quiz Duration (minutes)</label
+                  >
+                  <input
+                    type="number"
+                    class="form-control"
+                    id="quizDuration"
+                    v-model="quizForm.duration"
+                    min="1"
+                    required
+                  />
+                </div>
+
                 <button type="submit" class="btn btn-primary">
                   {{ isEditing ? "Update Quiz" : "Create Quiz" }}
                 </button>
@@ -240,22 +291,30 @@
   </div>
 </template>
 <script setup>
-import { ref, reactive, computed, onMounted, watch } from "vue";
+import { ref, reactive, computed, onMounted, watch, nextTick } from "vue";
 import { Modal } from "bootstrap";
+import { useStore } from "vuex";
 
 const apiBaseUrl = "http://localhost:5000/api/admin/dashboard"; // Backend API ka URL
 
+const store = useStore();
 const quizzes = ref([]);
 const Subjects = ref([]);
 const Chapters = ref([]);
+const Qualifications = ref([]);
 const searchQuery = ref("");
 const isEditing = ref(false);
+// Flag to prevent watch functions from triggering during initial data loading
+const isLoadingFormData = ref(false);
+
 const quizForm = reactive({
   id: null,
   title: "",
   quizType: "",
+  qualificationId: null,
   subjectId: null,
   chapterId: null,
+  duration: 30,
   questions: [
     {
       text: "",
@@ -270,9 +329,15 @@ const isLoading = ref(false);
 
 // API se quizzes fetch karna
 const fetchQuizzes = async () => {
-  isLoading.value = true;
   try {
-    const response = await fetch(`${apiBaseUrl}/all/quizzes`);
+    isLoading.value = true;
+    const response = await fetch(`${apiBaseUrl}/all/quizzes`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "Authentication-Token": store.state.user?.token,
+      },
+    });
     if (!response.ok) throw new Error("Failed to fetch quizzes");
     quizzes.value = await response.json();
   } catch (error) {
@@ -283,15 +348,34 @@ const fetchQuizzes = async () => {
 };
 
 const fetchSubjectsAndChapters = async () => {
-  isLoading.value = true;
   try {
-    const subjectsRes = await fetch(`${apiBaseUrl}/all/subjects`);
+    isLoading.value = true;
+    const subjectsRes = await fetch(`${apiBaseUrl}/all/subjects`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "Authentication-Token": store.state.user?.token,
+      },
+    });
     Subjects.value = await subjectsRes.json();
-    console.log("Subjects fetched:", Subjects.value);
 
-    const chaptersRes = await fetch(`${apiBaseUrl}/all/chapters`);
+    const chaptersRes = await fetch(`${apiBaseUrl}/all/chapters`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "Authentication-Token": store.state.user?.token,
+      },
+    });
     Chapters.value = await chaptersRes.json();
-    console.log("Chapters fetched:", Chapters.value);
+
+    const qualificationsRes = await fetch(`${apiBaseUrl}/all/qualifications`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "Authentication-Token": store.state.user?.token,
+      },
+    });
+    Qualifications.value = await qualificationsRes.json();
   } catch (error) {
     console.error("Error fetching subjects and chapters:", error);
   } finally {
@@ -299,21 +383,104 @@ const fetchSubjectsAndChapters = async () => {
   }
 };
 
+// Filter subjects based on selected qualification
+const filteredSubjects = computed(() => {
+  if (!quizForm.qualificationId) return Subjects.value;
+  return Subjects.value.filter(
+    (sub) => sub.qualification_id === quizForm.qualificationId
+  );
+});
+
+// Filter chapters based on selected subject
 const filteredChapters = computed(() => {
-  if (!quizForm.subjectId) return Chapters.value; // Agar subject select nahi hai, sabhi chapters dikhao
+  if (!quizForm.subjectId) return Chapters.value;
   return Chapters.value.filter(
     (chap) => chap.subject_id === quizForm.subjectId
   );
 });
 
+// When chapter changes, update subject automatically
 watch(
   () => quizForm.chapterId,
   (newChapterId) => {
+    // Skip if we're in the initial loading phase
+    if (isLoadingFormData.value || !newChapterId) return;
+
     const selectedChapter = Chapters.value.find(
       (chap) => chap.id === newChapterId
     );
     if (selectedChapter) {
-      quizForm.subjectId = selectedChapter.subject_id;
+      // Only update subject if it's different to avoid circular updates
+      if (quizForm.subjectId !== selectedChapter.subject_id) {
+        quizForm.subjectId = selectedChapter.subject_id;
+
+        // Find the subject to get its qualification
+        const relatedSubject = Subjects.value.find(
+          (sub) => sub.id === selectedChapter.subject_id
+        );
+        if (
+          relatedSubject &&
+          quizForm.qualificationId !== relatedSubject.qualification_id
+        ) {
+          quizForm.qualificationId = relatedSubject.qualification_id;
+        }
+      }
+    }
+  }
+);
+
+// When subject changes, update qualification automatically
+watch(
+  () => quizForm.subjectId,
+  (newSubjectId) => {
+    // Skip if we're in the initial loading phase
+    if (isLoadingFormData.value || !newSubjectId) return;
+
+    const selectedSubject = Subjects.value.find(
+      (sub) => sub.id === newSubjectId
+    );
+    if (selectedSubject) {
+      // Only update qualification if it's different
+      if (quizForm.qualificationId !== selectedSubject.qualification_id) {
+        quizForm.qualificationId = selectedSubject.qualification_id;
+      }
+
+      // Only reset if subject changes after initial load and we're in chapter mode
+      if (quizForm.quizType === "chapter" && quizForm.chapterId) {
+        // Check if current chapter belongs to this subject
+        const chapterBelongsToSubject = Chapters.value.some(
+          (chap) =>
+            chap.id === quizForm.chapterId && chap.subject_id === newSubjectId
+        );
+
+        // Only reset if chapter doesn't belong to the new subject
+        if (!chapterBelongsToSubject) {
+          quizForm.chapterId = null;
+        }
+      }
+    }
+  }
+);
+
+// When qualification changes, reset subject and chapter if they don't belong to this qualification
+watch(
+  () => quizForm.qualificationId,
+  (newQualificationId) => {
+    // Skip if we're in the initial loading phase
+    if (isLoadingFormData.value || !newQualificationId) return;
+
+    // If current subject doesn't belong to this qualification, reset it
+    if (quizForm.subjectId) {
+      const currentSubject = Subjects.value.find(
+        (sub) => sub.id === quizForm.subjectId
+      );
+      if (
+        currentSubject &&
+        currentSubject.qualification_id !== newQualificationId
+      ) {
+        quizForm.subjectId = null;
+        quizForm.chapterId = null;
+      }
     }
   }
 );
@@ -331,17 +498,31 @@ const openQuizForm = () => {
 // Quiz edit karna
 const editQuiz = async (quiz) => {
   isLoading.value = true;
+  isLoadingFormData.value = true; // Set flag to prevent watch functions
+
   try {
     const quizId = typeof quiz === "object" ? quiz.id : quiz;
-    const response = await fetch(`${apiBaseUrl}/quiz/${quizId}`);
+    const response = await fetch(`${apiBaseUrl}/quiz/${quizId}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "Authentication-Token": store.state.user?.token,
+      },
+    });
     if (!response.ok) throw new Error("Failed to fetch quiz details");
     const quizData = await response.json();
+    console.log("Fetched quiz data:", quizData);
 
     // Set up the form with the fetched data
     isEditing.value = true;
     quizForm.id = quizData.id;
     quizForm.title = quizData.title;
     quizForm.quizType = quizData.quiz_type;
+    quizForm.duration = quizData.duration || 30;
+
+    // Load data in the correct order to prevent watch functions from resetting values
+    // First set qualification, then subject, then chapter
+    quizForm.qualificationId = quizData.qualification_id;
     quizForm.subjectId = quizData.subject_id;
     quizForm.chapterId = quizData.chapter_id;
 
@@ -373,9 +554,21 @@ const editQuiz = async (quiz) => {
       quizFormModal = new Modal(document.getElementById("quizFormModal"));
     }
     quizFormModal.show();
+
+    // Use nextTick to ensure all data is properly loaded before enabling watch functions
+    nextTick(() => {
+      console.log("Form data loaded:", {
+        quizType: quizForm.quizType,
+        qualificationId: quizForm.qualificationId,
+        subjectId: quizForm.subjectId,
+        chapterId: quizForm.chapterId,
+      });
+      isLoadingFormData.value = false; // Re-enable watch functions
+    });
   } catch (error) {
     console.error("Error fetching quiz details:", error);
     alert("Failed to load quiz data for editing. Please try again.");
+    isLoadingFormData.value = false; // Make sure to re-enable watch functions even on error
   } finally {
     isLoading.value = false;
   }
@@ -389,11 +582,20 @@ const deleteQuiz = async (quiz) => {
       const quizId = typeof quiz === "object" ? quiz.id : quiz;
       const response = await fetch(`${apiBaseUrl}/quiz/${quizId}`, {
         method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          "Authentication-Token": store.state.user?.token,
+        },
       });
       if (!response.ok) throw new Error("Failed to delete quiz");
       quizzes.value = quizzes.value.filter((q) => q.id !== quizId);
+      store.dispatch("addToast", {
+        message: "One Quiz Deleted Successfully!",
+        type: "success",
+      });
     } catch (error) {
       console.error("Error deleting quiz:", error);
+      alert("Error in deleting a quiz, Please try again");
     } finally {
       isLoading.value = false;
     }
@@ -408,32 +610,56 @@ const submitQuizForm = async () => {
     ? `${apiBaseUrl}/${quizForm.id}`
     : `${apiBaseUrl}/add/quiz`;
 
+  // Prepare the request body
+  const requestBody = {
+    title: quizForm.title,
+    quizType: quizForm.quizType,
+    qualificationId: quizForm.qualificationId,
+    subjectId: quizForm.subjectId,
+    chapterId: quizForm.chapterId,
+    duration: quizForm.duration,
+    questions: quizForm.questions.map((q) => ({
+      text: q.text,
+      options: q.options,
+      correctAnswer: q.correctAnswer, // Send as 0-based index
+    })),
+  };
+
+  console.log("Request URL:", url);
+  console.log("Request Method:", method);
+  console.log("Request Body:", requestBody);
+
   try {
     const response = await fetch(url, {
       method: method,
       headers: {
         "Content-Type": "application/json",
+        "Authentication-Token": store.state.user?.token,
       },
-      body: JSON.stringify({
-        title: quizForm.title,
-        quizType: quizForm.quizType,
-        subjectId: quizForm.subjectId,
-        chapterId: quizForm.chapterId,
-        questions: quizForm.questions,
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) throw new Error("Failed to save quiz");
 
     const result = await response.json();
-
     if (isEditing.value) {
       // After editing, fetch the updated quiz to refresh the list
       const updatedQuizResponse = await fetch(
-        `${apiBaseUrl}/quiz/${quizForm.id}`
+        `${apiBaseUrl}/quiz/${quizForm.id}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            "Authentication-Token": store.state.user?.token,
+          },
+        }
       );
       if (updatedQuizResponse.ok) {
         const updatedQuiz = await updatedQuizResponse.json();
+        store.dispatch("addToast", {
+          message: "One Quiz Edited Successful!",
+          type: "success",
+        });
         // Find and replace the quiz in the list
         const index = quizzes.value.findIndex((q) => q.id === updatedQuiz.id);
         if (index !== -1) {
@@ -443,8 +669,19 @@ const submitQuizForm = async () => {
     } else if (result.quiz_id) {
       // For new quiz, fetch it and add to the list
       const newQuizResponse = await fetch(
-        `${apiBaseUrl}/quiz/${result.quiz_id}`
+        `${apiBaseUrl}/quiz/${result.quiz_id}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            "Authentication-Token": store.state.user?.token,
+          },
+        }
       );
+      store.dispatch("addToast", {
+        message: "One New Quiz Added Successful!",
+        type: "success",
+      });
       if (newQuizResponse.ok) {
         const newQuiz = await newQuizResponse.json();
         quizzes.value.push(newQuiz);
@@ -465,6 +702,10 @@ const resetForm = () => {
   quizForm.id = null;
   quizForm.title = "";
   quizForm.quizType = "";
+  quizForm.qualificationId = null;
+  quizForm.subjectId = null;
+  quizForm.chapterId = null;
+  quizForm.duration = 30;
   quizForm.questions = [
     {
       text: "",

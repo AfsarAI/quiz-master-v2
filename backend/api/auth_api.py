@@ -1,26 +1,35 @@
+from flask import current_app as app
 from flask_restful import Resource, marshal_with, marshal
 from flask_security import auth_required, verify_password, hash_password
 from flask import request, jsonify
 from datetime import datetime
-
-from models import db, User, Subject, Qualification
+from models import Quiz, db, User, Subject, Qualification
 from sqlalchemy.exc import IntegrityError
 from flask_security.utils import hash_password, verify_password
 from flask_security import SQLAlchemyUserDatastore
+from .fields_definitions import user_fields, subjects_fields, qual_fields
+from .user_api import add_recent_activity
 
-from .fields_definitions import user_fields  # फील्ड डेफिनिशन को अलग फाइल में स्टोर कर सकते हैं
 
-# यह userdatastore अगर app में initialize हुआ है, तो उसे import करें
-from flask import current_app as app
 userdatastore: SQLAlchemyUserDatastore = app.security.datastore
 
-class UserResource(Resource):
-    @marshal_with(user_fields)
-    @auth_required('token')
-    def get(self):
-        users = User.query.all()
-        return users
 
+
+# Qualification & Subjects Api for Registration Page
+class QualificationResource(Resource):
+    @marshal_with(qual_fields)
+    def get(self):
+        qualifications = Qualification.query.all()
+        return qualifications
+
+class SubjectsWithQualificationResource(Resource):
+    @marshal_with(subjects_fields)
+    def get(self, qualification_id):
+        subjects = Subject.query.filter_by(qualification_id=qualification_id).all()
+        return subjects
+
+
+# For Login & Register Api
 class UserRegisterResource(Resource):
     def post(self):
         data = request.get_json()
@@ -70,7 +79,7 @@ class UserRegisterResource(Resource):
                 userdatastore.add_role_to_user(new_user, default_role)
 
             db.session.commit()
-
+            add_recent_activity(user_id=new_user.id, action=f"Now {new_user.fullname} registered on this website")           
         except Exception as e:
             db.session.rollback()
             return {"error": f"Database error: {str(e)}"}, 500
@@ -92,11 +101,14 @@ class UserLoginResource(Resource):
         if not user:
             return {"message": "User not found"}, 404
 
+        if not user.active:
+            return {"message": "Your account is inactive"}, 403
+
         if not verify_password(password, user.password):
             return {"message": "Invalid password"}, 400
 
         token = user.get_auth_token()
-        # user_fields से serialize करें
         serialized_user = marshal(user, user_fields)
         serialized_user["token"] = token
         return serialized_user, 200
+

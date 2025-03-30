@@ -24,7 +24,7 @@
         <div class="col-md-6">
           <div class="card h-100">
             <div class="card-header bg-primary text-white">
-              <h5 class="mb-0">Recently Added Top 3 Quizzes</h5>
+              <h5 class="mb-0">Recently Added Top 5 Quizzes</h5>
             </div>
             <div class="card-body">
               <ul
@@ -146,7 +146,14 @@ const fetchUserStats = async () => {
   isLoading.value = true;
   try {
     const response = await fetch(
-      `http://localhost:5000/api/user/dashboard/${userId}/user-stats`
+      `http://localhost:5000/api/user/dashboard/${userId}/user-stats`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "Authentication-Token": store.state.user?.token,
+        },
+      }
     );
     if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
     const data = await response.json();
@@ -163,7 +170,14 @@ const fetchUpcomingQuizzes = async () => {
   isLoading.value = true;
   try {
     const response = await fetch(
-      "http://localhost:5000/api/user/dashboard/upcoming-quizzes"
+      "http://localhost:5000/api/user/dashboard/upcoming-quizzes",
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "Authentication-Token": store.state.user?.token,
+        },
+      }
     );
     if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
     const data = await response.json();
@@ -180,7 +194,14 @@ const fetchQuizScores = async () => {
   isLoading.value = true;
   try {
     const response = await fetch(
-      `http://localhost:5000/api/user/dashboard/${userId}/quiz-scores`
+      `http://localhost:5000/api/user/dashboard/${userId}/quiz-scores`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "Authentication-Token": store.state.user?.token,
+        },
+      }
     );
     if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
     const data = await response.json();
@@ -193,16 +214,28 @@ const fetchQuizScores = async () => {
   }
 };
 
+// Download CSV function - enhanced with toasts
 const downloadCSV = async () => {
   try {
     if (!userId) {
       console.error("User ID not found.");
+      store.dispatch("addToast", {
+        message: "User ID not found.",
+        type: "error",
+      });
       return;
     }
 
     // Step 1: Trigger CSV Generation
     const response = await fetch(
-      `http://localhost:5000/api/user/dashboard/task/csv-export/${userId}`
+      `http://localhost:5000/api/user/dashboard/task/csv-export/${userId}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "Authentication-Token": store.state.user?.token,
+        },
+      }
     );
     if (!response.ok) {
       throw new Error("Failed to trigger CSV generation.");
@@ -210,30 +243,46 @@ const downloadCSV = async () => {
 
     const { task_id } = await response.json();
     console.log("CSV generation started. Task ID:", task_id);
+    store.dispatch("addToast", {
+      message: "CSV generation started. Processing, please wait...",
+      type: "info",
+    });
 
     // Step 2: Polling to Check Task Status
     let isCompleted = false;
     while (!isCompleted) {
       const statusResponse = await fetch(
-        `http://localhost:5000/api/user/dashboard/task/csv-download/${task_id}`
+        `http://localhost:5000/api/user/dashboard/task/csv-download/${task_id}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            "Authentication-Token": store.state.user?.token,
+          },
+        }
       );
 
-      if (statusResponse.ok) {
-        // Task completed, download the file
+      if (statusResponse.status === 202) {
+        console.log("CSV still processing...");
+        await new Promise((resolve) => setTimeout(resolve, 5000)); // 5-second delay
+      } else if (statusResponse.status === 200) {
         window.location.href = `http://localhost:5000/api/user/dashboard/task/csv-download/${task_id}`;
+        store.dispatch("addToast", {
+          message: "CSV download successful!",
+          type: "success",
+        });
         isCompleted = true;
-      } else if (statusResponse.status === 404) {
-        console.log(
-          "CSV still processing... Waiting 3 seconds before retrying."
-        );
-        await new Promise((resolve) => setTimeout(resolve, 3000)); // 3-second delay
       } else {
-        throw new Error("Error checking CSV generation status.");
+        const statusData = await statusResponse.json();
+        console.error("Unexpected error during CSV download:", statusData);
       }
     }
   } catch (error) {
     console.error("Error during CSV download process:", error);
-    alert("An error occurred. Please try again.");
+    store.dispatch("addToast", {
+      message: "An error occurred. Please try again.",
+      type: "error",
+    });
   }
 };
 

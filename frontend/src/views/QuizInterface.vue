@@ -482,6 +482,7 @@ export default {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
+              "Authentication-Token": store.state.user?.token,
             },
             body: JSON.stringify({
               quizId,
@@ -636,9 +637,10 @@ export default {
         const response = await fetch(
           `http://127.0.0.1:5000/api/user/${userId.value}/data`,
           {
+            method: "GET",
             headers: {
-              "Authentication-Token": store.state.user?.token,
               "Content-Type": "application/json",
+              "Authentication-Token": store.state.user?.token,
             },
           }
         );
@@ -658,6 +660,7 @@ export default {
         const response = await fetch(
           `http://127.0.0.1:5000/api/user/dashboard/quiz/${quizId}/quiz-data`,
           {
+            method: "GET",
             headers: {
               "Content-Type": "application/json",
               "Authentication-Token": store.state.user?.token,
@@ -722,9 +725,9 @@ export default {
 
       // Calculate score
       const score = userAnswers.value.reduce((total, answer, index) => {
-        return (
-          total + (answer === quizData.questions[index].correct_option ? 1 : 0)
-        );
+        // Convert the correct_option from 1-based to 0-based for comparison
+        const correctAnswer = quizData.questions[index].correct_option - 1;
+        return total + (answer === correctAnswer ? 1 : 0);
       }, 0);
       console.log("Score:", score);
 
@@ -748,6 +751,7 @@ export default {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
+              "Authentication-Token": store.state.user?.token,
             },
             body: JSON.stringify({
               quizId,

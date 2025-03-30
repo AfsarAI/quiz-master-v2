@@ -136,7 +136,10 @@
 <script setup>
 // Import dependencies
 import { ref, onMounted } from "vue";
+import { useStore } from "vuex";
 import Chart from "chart.js/auto";
+
+const store = useStore();
 
 // Reactive variables for dynamic data
 const stats = ref([]);
@@ -149,7 +152,14 @@ const fetchStats = async () => {
   try {
     loading.value = true;
     const response = await fetch(
-      "http://127.0.0.1:5000/api/admin/dashboard/stats"
+      "http://127.0.0.1:5000/api/admin/dashboard/stats",
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "Authentication-Token": store.state.user?.token,
+        },
+      }
     );
     const data = await response.json();
 
@@ -174,7 +184,14 @@ const fetchRecentActivity = async () => {
   try {
     loading.value = true;
     const response = await fetch(
-      "http://127.0.0.1:5000/api/admin/dashboard/get/recent-activity/data"
+      "http://127.0.0.1:5000/api/admin/dashboard/recent-activity/data",
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "Authentication-Token": store.state.user?.token,
+        },
+      }
     );
     const data = await response.json();
     // Check if activities exist, otherwise set an empty array
@@ -191,7 +208,14 @@ const fetchTopScorers = async () => {
   try {
     loading.value = true;
     const response = await fetch(
-      "http://127.0.0.1:5000/api/admin/dashboard/top-scorers"
+      "http://127.0.0.1:5000/api/admin/dashboard/top-scorers",
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "Authentication-Token": store.state.user?.token,
+        },
+      }
     );
     const data = await response.json();
     topScorers.value = data || [];
@@ -207,7 +231,14 @@ const initUserEngagementCharts = async () => {
   try {
     loading.value = true;
     const response = await fetch(
-      "http://127.0.0.1:5000/api/admin/dashboard/user-engagement"
+      "http://127.0.0.1:5000/api/admin/dashboard/user-engagement",
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "Authentication-Token": store.state.user?.token,
+        },
+      }
     );
     const engagementData = await response.json();
 

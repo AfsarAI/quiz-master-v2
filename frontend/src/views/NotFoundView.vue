@@ -4,8 +4,8 @@
     <p>Oops! The page you're looking for doesn't exist.</p>
     <div class="button-group">
       <router-link to="/" class="btn">Go to Home</router-link>
-      <router-link to="/login" class="btn">Login</router-link>
-      <router-link to="/register" class="btn">Register</router-link>
+      <router-link to="/quiz-master/login" class="btn">Login</router-link>
+      <router-link to="/quiz-master/register" class="btn">Register</router-link>
     </div>
   </div>
 </template>

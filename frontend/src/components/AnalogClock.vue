@@ -14,10 +14,19 @@ export default {
     let animationFrameId = null;
 
     const drawClock = (ctx) => {
-      const now = new Date();
-      const hour = now.getHours() % 12;
-      const minute = now.getMinutes();
-      const second = now.getSeconds();
+      // Get time in Asia/Kolkata time zone
+      const formatter = new Intl.DateTimeFormat("en-US", {
+        timeZone: "Asia/Kolkata",
+        hour: "numeric",
+        minute: "numeric",
+        second: "numeric",
+        hour12: false,
+      });
+
+      const parts = formatter.formatToParts(new Date());
+      const hour = parseInt(parts.find((p) => p.type === "hour").value) % 12;
+      const minute = parseInt(parts.find((p) => p.type === "minute").value);
+      const second = parseInt(parts.find((p) => p.type === "second").value);
 
       // Clear canvas
       ctx.clearRect(0, 0, 300, 300);
@@ -45,7 +54,7 @@ export default {
       // Draw hour hand
       ctx.save();
       ctx.translate(150, 150);
-      ctx.rotate(((hour + minute / 60) * Math.PI) / 6 + Math.PI / 2);
+      ctx.rotate(((hour + minute / 60) * Math.PI) / 6 - Math.PI / 2);
       ctx.lineWidth = 6;
       ctx.beginPath();
       ctx.moveTo(-20, 0);
@@ -57,7 +66,7 @@ export default {
       // Draw minute hand
       ctx.save();
       ctx.translate(150, 150);
-      ctx.rotate((minute * Math.PI) / 30 + Math.PI / 2);
+      ctx.rotate((minute * Math.PI) / 30 - Math.PI / 2);
       ctx.lineWidth = 4;
       ctx.beginPath();
       ctx.moveTo(-28, 0);
@@ -69,7 +78,7 @@ export default {
       // Draw second hand
       ctx.save();
       ctx.translate(150, 150);
-      ctx.rotate((second * Math.PI) / 30 + Math.PI / 2);
+      ctx.rotate((second * Math.PI) / 30 - Math.PI / 2);
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.moveTo(-30, 0);

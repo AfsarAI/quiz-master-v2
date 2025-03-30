@@ -6,7 +6,7 @@
         Join thousands of learners and start your journey with Quiz Master
         today!
       </p>
-      <router-link to="/register" class="btn btn-light btn-lg"
+      <router-link to="quiz-master/register" class="btn btn-light btn-lg"
         >Sign Up Now</router-link
       >
     </div>
