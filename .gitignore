@@ -10,3 +10,8 @@ __pycache__/
 #redis server ke file
 *.rdb
 *.aof
+
+# extra
+desktop.ini
+Project Report_ Quiz Master.pdf:Zone.Identifier
+celerybeat-schedule

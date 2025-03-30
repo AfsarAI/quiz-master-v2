@@ -1,0 +1,194 @@
+openapi: 3.0.0
+info:
+  title: API Documentation
+  description: Complete API documentation for the system
+  version: 1.0.0
+servers:
+  - url: /api
+paths:
+  /qualifications:
+    get:
+      summary: Get all qualifications
+      tags:
+        - Authentication
+      responses:
+        '200':
+          description: Successful response
+
+  /qualifications/{qualification_id}/subjects:
+    get:
+      summary: Get subjects based on qualification
+      tags:
+        - Authentication
+      parameters:
+        - name: qualification_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Successful response
+
+  /user/register:
+    post:
+      summary: Register a new user
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '201':
+          description: User created successfully
+
+  /user/login:
+    post:
+      summary: User login
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Login successful
+
+  /admin/dashboard/stats:
+    get:
+      summary: Get admin dashboard statistics
+      tags:
+        - Admin
+      responses:
+        '200':
+          description: Successful response
+
+  /admin/dashboard/recent-activity/data:
+    get:
+      summary: Get recent activities
+      tags:
+        - Admin
+      responses:
+        '200':
+          description: Successful response
+
+  /admin/dashboard/top-scorers:
+    get:
+      summary: Get top scorers
+      tags:
+        - Admin
+      responses:
+        '200':
+          description: Successful response
+
+  /all/users/data:
+    get:
+      summary: Get all user data
+      tags:
+        - Admin
+      responses:
+        '200':
+          description: Successful response
+
+  /user/{user_id}/status:
+    put:
+      summary: Update user status
+      tags:
+        - Admin
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Status updated successfully
+
+  /admin/dashboard/all/qualifications:
+    get:
+      summary: Get all qualifications
+      tags:
+        - Admin
+      responses:
+        '200':
+          description: Successful response
+
+  /admin/dashboard/add/qualification:
+    post:
+      summary: Add a qualification
+      tags:
+        - Admin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+      responses:
+        '201':
+          description: Qualification added successfully
+
+  /admin/dashboard/update/qualification/{qual_id}:
+    put:
+      summary: Update a qualification
+      tags:
+        - Admin
+      parameters:
+        - name: qual_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Qualification updated successfully
+
+  /admin/dashboard/delete/qualification/{qual_id}:
+    delete:
+      summary: Delete a qualification
+      tags:
+        - Admin
+      parameters:
+        - name: qual_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Qualification deleted successfully
+
+  /user/{user_id}/data:
+    get:
+      summary: Get user profile data
+      tags:
+        - User
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Successful response
